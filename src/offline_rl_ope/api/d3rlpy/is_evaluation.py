@@ -3,7 +3,6 @@ import torch
 from typing import List, Callable
 from d3rlpy.metrics.scorer import AlgoProtocol
 from d3rlpy.dataset import Episode
-from sklearn.ensemble import GradientBoostingClassifier
 
 from ...is_eval_base import eval_weight_array
 from ...components.Policy import Policy, D3RlPyDeterministic
