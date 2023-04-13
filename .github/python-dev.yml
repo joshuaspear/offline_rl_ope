@@ -1,0 +1,48 @@
+name: Python Dev
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+    - name: Set up Python
+      uses: actions/setup-python@v2
+      with:
+        python-version: '3.8'
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip setuptools wheel
+        pip install -r requirements.txt
+        if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+        pip install pytest-cov
+        pip list
+    - name: Build package
+      run: |
+        python setup.py build_ext -q -j2
+        python -m pip install -e .
+    - name: Build Version
+      run: |
+        python -c "import shap_demo"
+    - name: Test with pytest
+      run: |
+        pytest -v --cov=src --cov-report=xml
+      continue-on-error: true
+    - name: Publish test results
+      uses: actions/upload-artifact@master
+      with:
+        name: Test results
+        path: coverage.xml
+      if: failure()
+    - name: Report Coverage
+      run: |
+        coverage report -m
+
