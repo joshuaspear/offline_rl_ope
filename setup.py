@@ -1,15 +1,19 @@
 from distutils.core import setup
 import pathlib
 import setuptools
+import os
 
 
 HERE = pathlib.Path(__file__).parent
 
 README = (HERE / "README.md").read_text()
 
+# get __version__ variable
+exec(open(os.path.join(HERE, '_version.py')).read())
+
 setuptools.setup(
-    name='temp_name',
-    version='1.0.0',
+    name='offline_rl_ope',
+    version=__version__,
     description="",
     long_description=README,
     packages=setuptools.find_packages(where="src"),
