@@ -57,7 +57,7 @@ class TorchISEvalD3rlpyWrap:
                                           collect_res=False, collect_act=True)
         
         is_calculator = self.importance_sampler(
-            behav_policy=eval_policy, eval_policy=eval_policy, 
+            behav_policy=self.behav_policy, eval_policy=eval_policy, 
             discount=self.discount, **self.is_kwargs)
 
         weight_res = []
