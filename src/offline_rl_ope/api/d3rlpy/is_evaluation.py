@@ -22,7 +22,8 @@ class TorchISEvalD3rlpyWrap:
                 mixing_params:List[float], discount:float, 
                 behav_policy:Policy, state_size:int, action_size:int, 
                 episodes: List[Episode], norm_weights:bool=False, 
-                clip:float=None, is_kwargs={}) -> None:
+                clip:float=None, is_kwargs={}, unique_pol_acts = [0,1]
+                ) -> None:
         self.importance_sampler = importance_sampler
         self.norm_weights = norm_weights
         self.clip = clip
@@ -32,6 +33,7 @@ class TorchISEvalD3rlpyWrap:
         self.state_size = state_size
         self.action_size = action_size
         self.episodes = episodes
+        self.unique_pol_acts = unique_pol_acts
         self.loss = None
         self.weight_res_mean = None
         self.weight_res_std = None
@@ -80,7 +82,12 @@ class TorchISEvalD3rlpyWrap:
         eval_policy_acts = [tens.squeeze().detach().numpy().reshape(-1) 
                             for tens in eval_policy.policy_actions]
         eval_policy_acts = np.concatenate(eval_policy_acts)
-        self.no_presc = (eval_policy_acts == 1).sum()/len(eval_policy_acts)
+        no_presc_res = []
+        for i in self.unique_pol_acts:
+            no_presc_res.append(
+                (eval_policy_acts == 1).sum()/len(eval_policy_acts)
+                )
+        self.no_presc = np.array(no_presc_res)
         self.loss = loss
         self.weight_res_mean = weight_res.mean()
         self.weight_res_std = weight_res.std()
