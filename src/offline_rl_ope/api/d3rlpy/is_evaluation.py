@@ -85,7 +85,7 @@ class TorchISEvalD3rlpyWrap:
         no_presc_res = []
         for i in self.unique_pol_acts:
             no_presc_res.append(
-                (eval_policy_acts == 1).sum()/len(eval_policy_acts)
+                (eval_policy_acts == i).sum()/len(eval_policy_acts)
                 )
         self.no_presc = np.array(no_presc_res)
         self.loss = loss
