@@ -7,6 +7,7 @@ from d3rlpy.dataset import Episode
 from ...is_eval_base import eval_weight_array
 from ...components.Policy import Policy, D3RlPyDeterministic
 from ...components.ImportanceSampling import ImportanceSampling
+from .scorers import MultiOutputCache
 
 class D3RlPyTorchAlgoPredict:
     
@@ -82,12 +83,12 @@ class TorchISEvalD3rlpyWrap:
         eval_policy_acts = [tens.squeeze().detach().numpy().reshape(-1) 
                             for tens in eval_policy.policy_actions]
         eval_policy_acts = np.concatenate(eval_policy_acts)
-        no_presc_res = []
+        no_presc_res = {}
         for i in self.unique_pol_acts:
-            no_presc_res.append(
+            no_presc_res[i] = (
                 (eval_policy_acts == i).sum()/len(eval_policy_acts)
-                )
-        self.no_presc = np.array(no_presc_res)
+            )
+        self.no_presc = no_presc_res
         self.loss = loss
         self.weight_res_mean = weight_res.mean()
         self.weight_res_std = weight_res.std()
@@ -120,10 +121,11 @@ class d3rlpy_weight_std_scorer:
         return self.eval_wrap.weight_res_std
     
 
-class d3rlpy_no_presc_scorer:
-    
-    def __init__(self, eval_wrap:TorchISEvalD3rlpyWrap) -> None:
+class NoPrescCache(MultiOutputCache):
+    def __init__(self, unique_action_vals:List, 
+                 eval_wrap:TorchISEvalD3rlpyWrap) -> None:
+        super().__init__(unique_values=unique_action_vals)
         self.eval_wrap = eval_wrap
     
-    def __call__(self, algo: AlgoProtocol, episodes: List[Episode]):
+    def scoring_calc(self, algo: AlgoProtocol, episodes: List[Episode]):
         return self.eval_wrap.no_presc
