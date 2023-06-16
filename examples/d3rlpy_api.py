@@ -28,6 +28,10 @@ dqn = DQN(gamma=gamma, target_update_interval=100)
 
 unique_pol_acts = np.arange(0,env.action_space.n)
 
+# Class for handling the output of the XGBoost classifier for regression based 
+# importance sampling. Can handle arbitrary numbers of classes and dimensions 
+# of discrete actions.
+
 class GbtEst:
     
     def __init__(self, estimator:MultiOutputClassifier) -> None:
@@ -48,19 +52,26 @@ class GbtEst:
 behav_est = MultiOutputClassifier(OneVsRestClassifier(XGBClassifier(
     objective="binary:logistic")))
 
+# Fit the behaviour model
 behav_est.fit(X=dataset.observations, Y=dataset.actions.reshape(-1,1))
 
 gbt_est = GbtEst(estimator=behav_est)
 gbt_policy_be = BehavPolicy(policy_class=gbt_est, collect_res=False)
 
+# Define an importance sampling calculation and caching object using weighted 
+# vanilla importance sampling, without clipping weights
 eval_wrap = TorchISEvalD3rlpyWrap(
     importance_sampler=VanillaIS, behav_policy=gbt_policy_be,
     discount=gamma, episodes=dataset.episodes, norm_weights=True, clip=None, 
     unique_pol_acts=unique_pol_acts)
 
+# Define caching object for capturing the average value by action, according to 
+# the evaluation model across the evaluation set
 disc_val_by_act_cache = DiscreteValueByActionCache(
     unique_action_vals=list(unique_pol_acts))
 
+# Define caching object for capturing the distribution of actions under the 
+# evaluation policy on the validation set
 act_dist_cache = ActDistCache(
     unique_action_vals=list(unique_pol_acts), 
     eval_wrap=eval_wrap)
@@ -68,26 +79,37 @@ act_dist_cache = ActDistCache(
 
 scorers = {}
 
+# Define scorer to extract the weighted IS loss from the TorchISEvalD3rlpyWrap 
+# object
 scorers.update({"loss": WrapperAccessor(item_key="loss", wrapper=eval_wrap)})
 
+# Define scorer to extract the mean IS weights from the TorchISEvalD3rlpyWrap 
+# object
 scorers.update({"weight_res_mean": WrapperAccessor(
     item_key="weight_res_mean", wrapper=eval_wrap)})
 
+# Define scorer to extract the standard deviation of IS weights from the 
+# TorchISEvalD3rlpyWrap object
 scorers.update({"weight_res_std": WrapperAccessor(
     item_key="weight_res_std", wrapper=eval_wrap)})
 
+# Define a scorer per action to extract the value from the 
+# DiscreteValueByActionCache object
 for i in unique_pol_acts:
     __scor_nm = "value_by_action_{}".format(i)
     scorers.update({
         __scor_nm: MultiOutputScorer(value=i, cache=disc_val_by_act_cache)
         })
 
+# Define a scorer per action to extract the probability of the action from the  
+# ActDistCache object during the IS evaluation
 for i in unique_pol_acts:
     __scor_nm = "act_dist_{}".format(i)
     scorers.update({
         __scor_nm: MultiOutputScorer(value=i, cache=act_dist_cache)
         })
 
+# Define the scorers and other hyperparameters required for the FQE evaluation
 fqe_scorers = {
     "soft_opc": soft_opc_scorer(70), 
     "init_state_val": initial_state_value_estimation_scorer
@@ -108,13 +130,22 @@ for scr in fqe_scorers.keys():
     scorers.update({scr:WrapperAccessor(
         item_key=scr, wrapper=fqe_eval_wrap)})
 
-
+# Combine both the IS and FQE calculation/caching objects into a single callback
 epoch_callback = EpochCallbackHandler([eval_wrap, fqe_eval_wrap])
 
-# train
+# Train:
+# After each epoch: 
+# * Regression weighted importance sampling will be performed and the loss, 
+#   mean IS weights, std IS weights will be recorded as well as the probability 
+#   of each action in the IS evaluation
+# * An FQE model will be trained for a single epoch and the soft OPC and 
+#   mean initial state value according to the trained FQE model
+# * The mean value according to the evaluation model on the evaluation set, 
+#   split by action
 dqn.fit(dataset.episodes, n_epochs=5, scorers=scorers, 
         eval_episodes=dataset.episodes, epoch_callback=epoch_callback)
 
+# The FQE model dumps results to a temporary location. Clean this up on close!
 fqe_eval_wrap.clean_up()
 
 # evaluate trained algorithm
