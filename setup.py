@@ -25,5 +25,10 @@ setuptools.setup(
     classifiers=[],
     package_dir={"": "src"},
     python_requires="",
-    install_requires=[""]
+    install_requires=[
+        "d3rlpy"
+        ],
+    dependency_links=[
+        "git+ssh://git@github.com/mwilliamson/mayo.git"
+    ]
 )

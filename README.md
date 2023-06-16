@@ -1,4 +1,6 @@
-# temp readme
+# offline_rl_ope (BETA RELEASE)
 
-This is a github python repo template. Follow these instructions on how to use this repo as a template for others:
-https://docs.github.com/en/github/creating-cloning-and-archiving-repositories/creating-a-repository-on-github/creating-a-repository-from-a-template
+**IMPORTANT: THIS IS A BETA RELEASE. FUNCTIONALITY IS STILL BEING TESTED**
+
+* Library for performing off policy evaluation, specifically for offline RL. 
+* Includes standalone functionality as well as an api for integration with d3rlpy

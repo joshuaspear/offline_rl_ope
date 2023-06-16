@@ -70,9 +70,9 @@ def eval_weight_array(weight_res:np.array, discnt_reward_res:np.array,
 
 
 def torch_is_evaluation(importance_sampler:ImportanceSampling, 
-                       dataset:torch.utils.data.Dataset, 
-                       norm_weights:bool=False, save_dir:str=None, 
-                       prefix:str=None, clip:float=None)->Tuple:
+                        dataset:torch.utils.data.Dataset, 
+                        norm_weights:bool=False, save_dir:str=None, 
+                        prefix:str=None, clip:float=None)->Tuple:
     weight_res, discnt_reward_res = get_weight_array(
         importance_sampler=importance_sampler, dataset=dataset)
     res = eval_weight_array(weight_res=weight_res, 

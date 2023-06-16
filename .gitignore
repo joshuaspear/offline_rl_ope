@@ -612,3 +612,7 @@ MigrationBackup/
 # End of https://www.toptal.com/developers/gitignore/api/pycharm,python,visualstudiocode,visualstudio
 
 .DS_Store
+
+/tmp
+/d3rlpy_data
+/d3rlpy_logs
