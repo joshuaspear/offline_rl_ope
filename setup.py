@@ -28,7 +28,4 @@ setuptools.setup(
     install_requires=[
         "d3rlpy"
         ],
-    dependency_links=[
-        "git+ssh://git@github.com/mwilliamson/mayo.git"
-    ]
 )
