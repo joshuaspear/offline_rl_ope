@@ -4,6 +4,7 @@
 
 **IMPORTANT**:
 * To use the d3rlpy api scorers, the following commit is required which is waiting approval https://github.com/takuseno/d3rlpy/pull/286
+* More documentation needs to be added however, please refer to examples/ for an illustration of the functionality
 
 ### Installation
 * This library is not currently available on pypi however, a version will be released soon.
@@ -12,3 +13,5 @@
 ### Description
 * Library for performing off policy evaluation, specifically for offline RL. 
 * Includes standalone functionality as well as an api for integration with d3rlpy
+
+Credit to https://github.com/takuseno/d3rlpy for the implementation of FQE
