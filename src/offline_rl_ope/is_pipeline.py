@@ -9,23 +9,7 @@ from .components.ImportanceSampling import ImportanceSampling
 
 logger = logging.getLogger("offline_rl_ope")
 
-def get_weight_array(importance_sampler:ImportanceSampling, 
-                     dataset:List[Dict[str,np.array]]):
-    weight_res = []
-    discnt_reward_res = []
-    for i, vals in enumerate(dataset):
-        weight, discnt_reward = importance_sampler.get_traj_loss(
-            state=torch.Tensor(vals["state"]), 
-            action=torch.Tensor(vals["act"]), 
-            reward=torch.Tensor(vals["reward"]))
-        weight_res.append(weight)
-        discnt_reward_res.append(discnt_reward)
-    weight_res = np.array(weight_res)
-    discnt_reward_res = np.array(discnt_reward_res)
-    return weight_res, discnt_reward_res
-
-def eval_weight_array(weight_res:np.array, discnt_reward_res:np.array, 
-                      dataset_len:int, norm_weights:bool=False,
+def eval_weight_array(weight_res:torch.Tensor, discnt_reward_res:torch.Tensor,
                       save_dir:str=None, prefix:str=None, 
                       clip:float=None)->Tuple:
     
@@ -39,19 +23,11 @@ def eval_weight_array(weight_res:np.array, discnt_reward_res:np.array,
         def _clip_is_weight(is_weight:float):
             return is_weight
 
-    clip_weight_res = np.array(list(map(_clip_is_weight, weight_res)))
-    if norm_weights:
-        weight_res = weight_res/weight_res.sum()
-        clip_weight_res = clip_weight_res/clip_weight_res.sum()
-    else:
-        weight_res = weight_res/dataset_len
-        clip_weight_res = clip_weight_res/dataset_len
+    clip_weight_res = torch.Tensor(list(map(_clip_is_weight, weight_res)))
     losses = weight_res*discnt_reward_res
-    losses = torch.Tensor(losses)
     loss = float(torch.sum(losses))
     
     clip_losses = clip_weight_res*discnt_reward_res
-    clip_losses = torch.Tensor(clip_losses)
     clip_loss = float(torch.sum(clip_losses))
     
     if (save_dir is not None) and (prefix is not None):
@@ -75,16 +51,22 @@ def torch_is_evaluation(importance_sampler:ImportanceSampling,
                         dataset:torch.utils.data.Dataset, 
                         norm_weights:bool=False, save_dir:str=None, 
                         prefix:str=None, clip:float=None)->Tuple:
-    weight_res, discnt_reward_res = get_weight_array(
-        importance_sampler=importance_sampler, dataset=dataset)
+    ws, rs, ncs = importance_sampler.get_dataset_w_r(dataset=dataset)
     
-    logger.debug("weight_res: {}".format(weight_res))
-    logger.debug("discnt_reward_res: {}".format(discnt_reward_res))
+    logger.debug("ws: {}".format(ws))
+    logger.debug("rs: {}".format(rs))
+    logger.debug("ncs: {}".format(ncs))
     
-    res = eval_weight_array(weight_res=weight_res, 
-                              discnt_reward_res=discnt_reward_res, 
-                              dataset_len=len(dataset), 
-                              norm_weights=norm_weights, 
-                              save_dir=save_dir, prefix=prefix, 
-                              clip=clip)
+    if norm_weights:
+        norm_val = torch.sum(torch.Tensor(ncs))
+        ws = [w/norm_val for w in ws]
+    else:
+        ws = [w/len(dataset) for w in ws]
+    
+    ws = torch.concat(ws)
+    rs = torch.concat(rs)
+    
+    res = eval_weight_array(weight_res=ws, discnt_reward_res=rs,
+                            save_dir=save_dir, prefix=prefix, 
+                            clip=clip)
     return res

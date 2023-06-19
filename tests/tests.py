@@ -51,6 +51,10 @@ test_act_inidiv_rew = np.array(
      [-1, -1*0.99, -1*(np.power(0.99,2))]]
     )
 
+test_act_norm_conts = test_act_indiv_weights.prod(axis=1)
+
+test_act_pd_weights = test_act_indiv_weights.cumprod(axis=1)
+
 
 test_act_traj_rew = test_act_inidiv_rew.sum(axis=1)
 test_act_traj_weights = test_act_indiv_weights.prod(axis=1)        
@@ -111,15 +115,19 @@ class ImportanceSamplingTest(unittest.TestCase):
     def test_eval_array_weight(self):
         tollerance = abs(test_act_indiv_weights.mean())/1000
         test_pred = []
+        test_nc = []
         for s,a in zip(test_state_vals, test_action_vals):
             s = torch.Tensor(s)
             a = torch.Tensor(a)
-            pred = self.is_sampler._ImportanceSampling__eval_array_weight(
+            pred, nc = self.is_sampler._ImportanceSampling__eval_array_weight(
                 state_array=s, action_array=a
             )
             self.assertEqual(pred.shape, torch.Size([3]))
+            self.assertEqual(nc.shape, torch.Size([]))
             test_pred.append(pred.tolist())
+            test_nc.append(nc.tolist())
         test_pred = np.array(test_pred)
+        test_nc = np.array(test_nc)
         res = test_pred==test_act_indiv_weights
         if not res.all():
             logger.debug(test_pred)
@@ -129,6 +137,7 @@ class ImportanceSamplingTest(unittest.TestCase):
             self.assertTrue(diff_res)
         else:
             self.assertTrue(res.all())
+        res = test_nc==test_act_norm_conts
             
 
     def test_eval_traj_reward(self):
@@ -160,36 +169,55 @@ class VanillaISTest(unittest.TestCase):
         self.is_sampler = VanillaIS(
             behav_policy=behav_policy, eval_policy=eval_policy, 
             discount=0.99)
-    
-    def test_get_traj_rwrd(self):
+
+    def test_get_traj_weight_array(self):
         
-        tollerance_w = abs(test_act_traj_weights.mean())/1000
-        tollerance_r = abs(test_act_traj_rew.mean())/1000
-        for i,(w,r) in enumerate(
-            zip(test_act_indiv_weights, test_act_inidiv_rew)):
+        tollerance_w = abs(test_act_norm_conts.mean())/1000
+        for i,w in enumerate(test_act_indiv_weights):
             w = torch.Tensor(w)
-            r = torch.Tensor(r)
-            pred = self.is_sampler._ImportanceSampling__get_traj_rwrd(
-                weight_array=w, discnt_reward_array=r
-            )
-            self.assertTrue(isinstance(pred, tuple))
-            self.assertTrue(len(pred)==2)
-            self.assertEqual(pred[0].shape, torch.Size([]))
-            self.assertEqual(pred[1].shape, torch.Size([]))
-            res = pred==test_act_traj_w_r[i]
+            pred = self.is_sampler.get_traj_weight_array(
+                weight_array=w)
+            #self.assertTrue(isinstance(pred, np.array))
+            self.assertEqual(pred.shape, torch.Size([3]))
+            res = pred==np.repeat(test_act_norm_conts[i],3)
             if not res:
-                logger.debug("w: {}".format(w))
-                logger.debug("r: {}".format(r))
                 logger.debug("pred: {}".format(pred))
-                logger.debug("test_act[i]: {}".format(test_act_traj_w_r[i]))
-                diff_res = pred[0]-test_act_traj_w_r[i][0]
+                logger.debug("test_act_norm_conts[i]: {}".format(test_act_norm_conts[i]))
+                diff_res = pred-test_act_norm_conts[i]
                 diff_res = (diff_res < tollerance_w).all()
-                self.assertTrue(diff_res)
-                diff_res = pred[1]-test_act_traj_w_r[i][1]
-                diff_res = (diff_res < tollerance_r).all()
                 self.assertTrue(diff_res)
             else:
                 self.assertTrue(res)
+                
+                
+class PerDecisionISTest(unittest.TestCase):
+    def setUp(self) -> None:
+        behav_policy = TestPolicy(test_action_probs)
+        eval_policy = TestPolicy(test_eval_action_probs)
+        self.is_sampler = PerDecisionIS(
+            behav_policy=behav_policy, eval_policy=eval_policy, 
+            discount=0.99)
+
+    def test_get_traj_weight_array(self):
+        
+        tollerance_w = abs(test_act_pd_weights.mean())/1000
+        for i,w in enumerate(test_act_indiv_weights):
+            w = torch.Tensor(w)
+            pred = self.is_sampler.get_traj_weight_array(
+                weight_array=w)
+            #self.assertTrue(isinstance(pred, np.array))
+            self.assertEqual(pred.shape, torch.Size([3]))
+            res = pred==test_act_pd_weights[i]
+            if not res:
+                logger.debug("pred: {}".format(pred))
+                logger.debug("test_act_pd_weights[i]: {}".format(test_act_pd_weights[i]))
+                diff_res = pred-test_act_pd_weights[i]
+                diff_res = (diff_res < tollerance_w).all()
+                self.assertTrue(diff_res)
+            else:
+                self.assertTrue(res)
+
+
 
 # class PerDecisionISTest(unittest.TestCase):
 #     def setUp(self) -> None:
