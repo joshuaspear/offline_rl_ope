@@ -16,6 +16,7 @@
 * Includes standalone functionality as well as an api for integration with d3rlpy
 
 Credit to https://github.com/takuseno/d3rlpy for the implementation of FQE
+Credit to https://github.com/gonzfe05/HCOPE/tree/master for the implementation of HCOPE
 
 
 ### Future work

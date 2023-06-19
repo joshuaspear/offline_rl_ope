@@ -33,5 +33,21 @@ class DiscreteValueByActionCache(MultiOutputCache):
             for key in self.unique_values
             }
         return res_dict
-
+    
+class TrajInitialStateValueEstimationScorer:
+    # Directly copies the initial_state_value_estimation_scorer except it 
+    # enables chaching of individual trajectory values
+    def __init__(self) -> None:
+        self.cache = None
+        
+    def __call__(self, algo: AlgoProtocol, episodes: List[Episode]) -> float:
+        total_values = []
+        for episode in episodes:
+            for batch in _make_batches(episode, WINDOW_SIZE, algo.n_frames):
+                # estimate action-value in initial states
+                actions = algo.predict([batch.observations[0]])
+                values = algo.predict_value([batch.observations[0]], actions)
+                total_values.append(values[0])
+        self.cache = total_values
+        return float(np.mean(total_values))
 
