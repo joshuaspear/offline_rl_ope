@@ -149,6 +149,7 @@ class PerDecisionIS(ImportanceSampling):
     
     def __init__(self, behav_policy: Policy, eval_policy: Policy, 
                  discount: float) -> None:
+        logger.warning("Per decisions IS estimator not yet tested!")
         super().__init__(behav_policy, eval_policy, discount)
     
     def get_weight_array(self, weight_array):
