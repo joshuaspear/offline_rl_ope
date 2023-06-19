@@ -53,19 +53,31 @@ class TorchISEvalD3rlpyWrap(Wrapper):
 
         weight_res = []
         discnt_reward_res = []
+        norm_conts = []
+        # For each trajectory in an input dataset, get a list of the weights
+        # and rewards for each trajectory
+        # TODO: Consolodate with is_pipeline code!
         for episode in self.episodes:
-            #for batch in _make_batches(episode, WINDOW_SIZE, algo.n_frames):
-            weight, discnt_reward = is_calculator.get_traj_loss(
+            weight, discnt_reward, norm_cont = is_calculator.get_traj_w_r(
                 state=torch.Tensor(episode.observations), 
                 action=torch.Tensor(episode.actions.reshape(-1,1)), 
-                reward=torch.Tensor(episode.rewards.reshape(-1,1)))
+                reward=torch.Tensor(episode.rewards.reshape(-1,1))
+                )
             weight_res.append(weight)
             discnt_reward_res.append(discnt_reward)
-        weight_res = np.array(weight_res)
-        discnt_reward_res = np.array(discnt_reward_res)
+            norm_conts.append(norm_cont)
+
+        if self.norm_weights:
+            norm_val = torch.sum(torch.Tensor(norm_conts))
+            weight_res = [w/norm_val for w in weight_res]
+        else:
+            weight_res = [w/len(self.episodes) for w in weight_res]
+        
+        weight_res = torch.concat(weight_res)
+        discnt_reward_res = torch.concat(discnt_reward_res)
+    
         loss, _, clip_loss, _, weight_res, clip_weight_res = eval_weight_array(
-            weight_res=weight_res, discnt_reward_res=discnt_reward_res, 
-            dataset_len=len(self.episodes), norm_weights=self.norm_weights, 
+            weight_res=weight_res, discnt_reward_res=discnt_reward_res,
             save_dir=None, prefix=None, clip=self.clip)
         # TODO: Assumes 1 dimensional action!
         eval_policy_acts = [tens.squeeze().detach().numpy().reshape(-1) 
