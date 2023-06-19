@@ -1,3 +1,4 @@
+import logging
 import numpy as np
 import os
 import pickle
@@ -6,6 +7,7 @@ from typing import Dict, List, Tuple
 
 from .components.ImportanceSampling import ImportanceSampling
 
+logger = logging.getLogger("offline_rl_ope")
 
 def get_weight_array(importance_sampler:ImportanceSampling, 
                      dataset:List[Dict[str,np.array]]):
@@ -75,6 +77,10 @@ def torch_is_evaluation(importance_sampler:ImportanceSampling,
                         prefix:str=None, clip:float=None)->Tuple:
     weight_res, discnt_reward_res = get_weight_array(
         importance_sampler=importance_sampler, dataset=dataset)
+    
+    logger.debug("weight_res: {}".format(weight_res))
+    logger.debug("discnt_reward_res: {}".format(discnt_reward_res))
+    
     res = eval_weight_array(weight_res=weight_res, 
                               discnt_reward_res=discnt_reward_res, 
                               dataset_len=len(dataset), 

@@ -1,8 +1,11 @@
+import logging
 from typing import List, Tuple
 import numpy as np
 import torch
 
 from .Policy import Policy
+
+logger = logging.getLogger("offline_rl_ope")
 
 class ImportanceSampling:
     
@@ -27,9 +30,12 @@ class ImportanceSampling:
         """
         behav_probs = self.__behav_policy(action=action_array, 
                                           state=state_array)
+        logger.debug("behav_probs: {}".format(behav_probs))
         eval_probs = self.__eval_policy(action=action_array, state=state_array)
+        logger.debug("eval_probs: {}".format(eval_probs))
         weight_array = eval_probs/behav_probs
         weight_array = weight_array.squeeze()
+        logger.debug("weight_array: {}".format(weight_array))
         return weight_array
     
     def __eval_traj_reward(self, reward_array:torch.Tensor)->torch.Tensor:
