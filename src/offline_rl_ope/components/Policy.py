@@ -43,9 +43,16 @@ class BehavPolicy(Policy):
 class D3RlPyDeterministic(Policy):
     
     def __init__(self, policy_class: Callable, collect_res:bool, 
-                 collect_act:bool) -> None:
+                 collect_act:bool, gpu:bool=True) -> None:
         super().__init__(policy_class, collect_res)
         self.policy_actions = []
+        if gpu:
+            self.__preproc_tens = lambda x: x.to("cuda")
+            self.__postproc_tens = lambda x: x.to("cpu")
+        else:
+            self.__preproc_tens = lambda x: x
+            self.__postproc_tens = lambda x: x
+        
         if collect_act:
             self.__collect_act_func =  self.__cllct_act_true
         else:
@@ -58,7 +65,9 @@ class D3RlPyDeterministic(Policy):
         pass
     
     def __call__(self, state: torch.Tensor, action: torch.Tensor):
+        state = self.__preproc_tens(state)
         greedy_action = self.policy_class(x=state).view(-1,1)
+        greedy_action = self.__postproc_tens(state)
         self.__collect_act_func(greedy_action)
         res = (greedy_action == action).all(dim=1, keepdim=True).int()
         self.collect_res_fn(res)

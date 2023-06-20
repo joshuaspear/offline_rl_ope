@@ -25,7 +25,7 @@ class TorchISEvalD3rlpyWrap(Wrapper):
     def __init__(self, importance_sampler:ImportanceSampling,
                  discount:float, behav_policy:Policy, episodes: List[Episode], 
                  norm_weights:bool=False, clip:float=None, is_kwargs={}, 
-                 unique_pol_acts = [0,1],
+                 unique_pol_acts = [0,1], gpu:bool=False
                  ) -> None:
         super().__init__(
             scorers_nms=["action_dist", "loss", "weight_res_mean", 
@@ -39,13 +39,15 @@ class TorchISEvalD3rlpyWrap(Wrapper):
         self.episodes = episodes
         self.unique_pol_acts = unique_pol_acts
         self.is_kwargs = is_kwargs
+        self.gpu = gpu
         
     def eval(self, algo: AlgoProtocol, epoch, total_step) -> Dict:
         policy_class = D3RlPyTorchAlgoPredict(
             predict_func=algo.predict)
         
         eval_policy = D3RlPyDeterministic(policy_class=policy_class, 
-                                          collect_res=False, collect_act=True)
+                                          collect_res=False, collect_act=True,
+                                          gpu=self.gpu)
         
         is_calculator = self.importance_sampler(
             behav_policy=self.behav_policy, eval_policy=eval_policy, 
