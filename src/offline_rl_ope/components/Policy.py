@@ -67,7 +67,7 @@ class D3RlPyDeterministic(Policy):
     def __call__(self, state: torch.Tensor, action: torch.Tensor):
         state = self.__preproc_tens(state)
         greedy_action = self.policy_class(x=state).view(-1,1)
-        greedy_action = self.__postproc_tens(state)
+        greedy_action = self.__postproc_tens(greedy_action)
         self.__collect_act_func(greedy_action)
         res = (greedy_action == action).all(dim=1, keepdim=True).int()
         self.collect_res_fn(res)
