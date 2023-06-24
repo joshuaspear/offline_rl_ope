@@ -14,10 +14,10 @@ from offline_rl_ope.api.d3rlpy import (
     EpochCallbackHandler)
 from offline_rl_ope.api.d3rlpy.scorers import (
     DiscreteValueByActionCache)
-from offline_rl_ope.components.ImportanceSampling import VanillaIS
+from offline_rl_ope.components.ImportanceSampler import VanillaIS
 from offline_rl_ope.components.Policy import BehavPolicy
-from offline_rl_ope.api.d3rlpy.is_evaluation import ActDistCache
-from offline_rl_ope.components.utils import MultiOutputScorer
+# from offline_rl_ope.api.d3rlpy.is_evaluation import ActDistCache
+# from offline_rl_ope.components.utils import MultiOutputScorer
 
 # obtain dataset
 dataset, env = get_cartpole()

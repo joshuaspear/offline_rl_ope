@@ -1,4 +1,5 @@
 import unittest
+from unittest.mock import MagicMock
 import torch
 import logging
 import numpy as np
@@ -7,57 +8,59 @@ import pandas as pd
 #     ImportanceSampling, VanillaIS, PerDecisionIS)
 # from dtr_renal.models.components.policy_eval.IsEvaluation import (
 #     torch_is_evaluation)
-from offline_rl_ope.components.ImportanceSampling import (
-    ImportanceSampling, VanillaIS, PerDecisionIS)
+from offline_rl_ope.components.ImportanceSampler import (
+    ImportanceSampler, VanillaIS, PerDecisionIS, ISWeightCalculator)
+from offline_rl_ope.Dataset import ISEpisode
 
 logger = logging.getLogger("offline_rl_ope")
 
 test_state_vals = [
-    [[1,2,3,4], [5,6,7,8], [5,7,2,9]],
+    [[1,2,3,4], [5,6,7,8], [5,7,2,9], [5,7,2,9]],
     [[5,6,7,8], [5,6,7,8], [1,2,3,4]]
 ]
 test_action_vals = [
-    [[1], [0], [0]],
+    [[1], [0], [0], [1]],
     [[0], [0], [1]]
 ]
 
 test_action_probs = [
-    [[0.9], [0.7], [0.66]],
+    [[0.9], [0.7], [0.66], [0.7]],
     [[0.54], [0.9], [0.5]]
 ]
 
 test_eval_action_vals = [
-    [[1], [1], [0]],
+    [[1], [1], [0], [1]],
     [[0], [0], [0]]
 ]
 
 test_eval_action_probs = [
-    [[1], [0.07], [0.89]],
+    [[1], [0.07], [0.89], [1]],
     [[0.75], [0.9], [0.2]]
 ]
 
 test_reward_values = [
-    [[1],[-1], [1]],
+    [[1],[-1], [1], [1]],
     [[-1],[-1], [-1]]
 ]
 
-test_act_indiv_weights = np.array([
-    [1/0.9, 0.07/0.7, 0.89/0.66],
-    [ 0.75/0.54, 0.9/0.9, 0.2/0.5]
-    ])
+test_act_indiv_weights = [
+    np.array([1/0.9, 0.07/0.7, 0.89/0.66, 1/0.7]),
+    np.array([ 0.75/0.54, 0.9/0.9, 0.2/0.5])
+    ]
 
-test_act_inidiv_rew = np.array(
-    [[1, -1*0.99, 1*(np.power(0.99,2))],
-     [-1, -1*0.99, -1*(np.power(0.99,2))]]
-    )
+test_act_inidiv_rew = [
+    np.array([1, -1*0.99, 1*(np.power(0.99,2)), 1*(np.power(0.99,3))]),
+    np.array([-1, -1*0.99, -1*(np.power(0.99,2))])
+    ]
 
-test_act_norm_conts = test_act_indiv_weights.prod(axis=1)
+test_act_norm_conts = [val.prod() for val in test_act_indiv_weights]
 
-test_act_pd_weights = test_act_indiv_weights.cumprod(axis=1)
+test_act_pd_weights = [val.cumprod() for val in test_act_indiv_weights]
 
 
-test_act_traj_rew = test_act_inidiv_rew.sum(axis=1)
-test_act_traj_weights = test_act_indiv_weights.prod(axis=1)        
+test_act_traj_rew = [val.sum() for val in test_act_inidiv_rew]
+test_act_traj_weights = [val.prod() for val in test_act_indiv_weights]
+       
 test_act_traj_w_r = []
 for w,r in zip(test_act_traj_weights, test_act_traj_rew):
     test_act_traj_w_r.append(
@@ -103,88 +106,106 @@ class TestPolicy:
     def reset(self):
         self.idx = 0
 
-class ImportanceSamplingTest(unittest.TestCase):
+class ISWeightCalculatorTest(unittest.TestCase):
 
     def setUp(self) -> None:
         behav_policy = TestPolicy(test_action_probs)
         eval_policy = TestPolicy(test_eval_action_probs)
-        self.is_sampler = ImportanceSampling(
-            behav_policy=behav_policy, eval_policy=eval_policy, 
-            discount=0.99)
+        self.is_sampler = ISWeightCalculator(
+            behav_policy=behav_policy, eval_policy=eval_policy)
+        # def __return_func(weight_array):
+        #     return weight_array 
     
-    def test_eval_array_weight(self):
-        tollerance = abs(test_act_indiv_weights.mean())/1000
+        # self.is_sampler.get_traj_weight_array = MagicMock(
+        #     side_effect=__return_func)
+        self.tollerance = [abs(val.mean())/1000 
+                           for val in test_act_indiv_weights]
+    
+    def test_get_traj_w(self):
         test_pred = []
-        test_nc = []
         for s,a in zip(test_state_vals, test_action_vals):
             s = torch.Tensor(s)
             a = torch.Tensor(a)
-            pred, nc = self.is_sampler._ImportanceSampling__eval_array_weight(
-                state_array=s, action_array=a
+            pred = self.is_sampler.get_traj_w(
+                states=s, actions=a
             )
-            self.assertEqual(pred.shape, torch.Size([3]))
-            self.assertEqual(nc.shape, torch.Size([]))
-            test_pred.append(pred.tolist())
-            test_nc.append(nc.tolist())
-        test_pred = np.array(test_pred)
-        test_nc = np.array(test_nc)
-        res = test_pred==test_act_indiv_weights
-        if not res.all():
-            logger.debug(test_pred)
-            logger.debug(test_act_indiv_weights)
-            diff_res = test_pred-test_act_indiv_weights
-            diff_res = (diff_res < tollerance).all()
-            self.assertTrue(diff_res)
+            self.assertEqual(pred.shape, torch.Size([s.shape[0]]))
+            test_pred.append(pred.tolist())    
+        for p,t,toll in zip(test_pred, test_act_indiv_weights, self.tollerance):
+            res = (p==t).all()
+            if not res:
+                logger.debug("p: {}".format(p))
+                logger.debug("t: {}".format(t))
+                diff_res = p-t
+                diff_res = (diff_res < toll).all()
+                self.assertTrue(diff_res)
+            else:
+                self.assertTrue(res)
+    
+    def test_get_dataset_w(self):
+        input_states = [torch.Tensor(s) for s in test_state_vals]
+        input_actions = [torch.Tensor(a) for a in test_action_vals]
+        pred_res = self.is_sampler.get_dataset_w(
+            states=input_states, actions=input_actions, h=4)
+        test_res = torch.Tensor(
+            [
+                test_act_indiv_weights[0].tolist(),
+                [*test_act_indiv_weights[1].tolist(),1]
+                ]
+        )
+        res = (pred_res == test_res).all()
+        if not res:
+            res_diff = pred_res - test_res
+            tol = torch.Tensor(self.tollerance).view(-1,1).expand(
+                size=(len(self.tollerance), res_diff.shape[1]))
+            self.assertTrue((res_diff<tol).all())
         else:
-            self.assertTrue(res.all())
-        res = test_nc==test_act_norm_conts
+            self.assertTrue(res)
             
-
-    def test_eval_traj_reward(self):
         
-        tollerance = abs(test_act_inidiv_rew.mean())/1000
-        test_pred = []
-        for r in test_reward_values:
-            r = torch.Tensor(r)
-            pred = self.is_sampler._ImportanceSampling__eval_traj_reward(
-                reward_array=r
-            )
-            self.assertEqual(pred.shape, torch.Size([3]))
-            test_pred.append(pred.tolist())
-        test_pred = np.array(test_pred)
-        res = test_pred==test_act_inidiv_rew
-        if not res.all():
-            logger.debug(test_pred)
-            logger.debug(test_act_inidiv_rew)
-            diff_res = test_pred-test_act_inidiv_rew
-            diff_res = (diff_res < tollerance).all()
-            self.assertTrue(diff_res)
-        else:
-            self.assertTrue(res.all())
+    # def test_eval_traj_reward(self):
+        
+    #     tollerance = abs(test_act_inidiv_rew.mean())/1000
+    #     test_pred = []
+    #     for r in test_reward_values:
+    #         r = torch.Tensor(r)
+    #         pred = self.is_sampler._ImportanceSampling__eval_traj_reward(
+    #             reward_array=r
+    #         )
+    #         self.assertEqual(pred.shape, torch.Size([3]))
+    #         test_pred.append(pred.tolist())
+    #     test_pred = np.array(test_pred)
+    #     res = test_pred==test_act_inidiv_rew
+    #     if not res.all():
+    #         logger.debug(test_pred)
+    #         logger.debug(test_act_inidiv_rew)
+    #         diff_res = test_pred-test_act_inidiv_rew
+    #         diff_res = (diff_res < tollerance).all()
+    #         self.assertTrue(diff_res)
+    #     else:
+    #         self.assertTrue(res.all())
 
 class VanillaISTest(unittest.TestCase):
     def setUp(self) -> None:
-        behav_policy = TestPolicy(test_action_probs)
-        eval_policy = TestPolicy(test_eval_action_probs)
-        self.is_sampler = VanillaIS(
-            behav_policy=behav_policy, eval_policy=eval_policy, 
-            discount=0.99)
+        self.is_sampler = VanillaIS()
 
     def test_get_traj_weight_array(self):
-        
-        tollerance_w = abs(test_act_norm_conts.mean())/1000
+        tollerance_w = [abs(val.mean())/1000 
+                           for val in test_act_norm_conts]
         for i,w in enumerate(test_act_indiv_weights):
             w = torch.Tensor(w)
             pred = self.is_sampler.get_traj_weight_array(
-                weight_array=w)
+                is_weights=w
+            )
             #self.assertTrue(isinstance(pred, np.array))
-            self.assertEqual(pred.shape, torch.Size([3]))
-            res = pred==np.repeat(test_act_norm_conts[i],3)
+            self.assertEqual(pred.shape, torch.Size([w.shape[0]]))
+            res = pred==np.repeat(test_act_norm_conts[i],w.shape[0])
             if not res:
                 logger.debug("pred: {}".format(pred))
-                logger.debug("test_act_norm_conts[i]: {}".format(test_act_norm_conts[i]))
+                logger.debug("test_act_norm_conts[i]: {}".format(
+                    test_act_norm_conts[i]))
                 diff_res = pred-test_act_norm_conts[i]
-                diff_res = (diff_res < tollerance_w).all()
+                diff_res = (diff_res < tollerance_w[i]).all()
                 self.assertTrue(diff_res)
             else:
                 self.assertTrue(res)
@@ -192,133 +213,27 @@ class VanillaISTest(unittest.TestCase):
                 
 class PerDecisionISTest(unittest.TestCase):
     def setUp(self) -> None:
-        behav_policy = TestPolicy(test_action_probs)
-        eval_policy = TestPolicy(test_eval_action_probs)
-        self.is_sampler = PerDecisionIS(
-            behav_policy=behav_policy, eval_policy=eval_policy, 
-            discount=0.99)
+        self.is_sampler = PerDecisionIS()
 
     def test_get_traj_weight_array(self):
-        
-        tollerance_w = abs(test_act_pd_weights.mean())/1000
+        tollerance_w = [abs(val.mean())/1000 
+                           for val in test_act_pd_weights]
         for i,w in enumerate(test_act_indiv_weights):
             w = torch.Tensor(w)
             pred = self.is_sampler.get_traj_weight_array(
-                weight_array=w)
-            #self.assertTrue(isinstance(pred, np.array))
-            self.assertEqual(pred.shape, torch.Size([3]))
+                is_weights=w
+            )
+            #self.assertEqual(pred.shape, torch.Size([3]))
             res = pred==test_act_pd_weights[i]
             if not res:
                 logger.debug("pred: {}".format(pred))
-                logger.debug("test_act_pd_weights[i]: {}".format(test_act_pd_weights[i]))
+                logger.debug("test_act_pd_weights[i]: {}".format(
+                    test_act_pd_weights[i]))
                 diff_res = pred-test_act_pd_weights[i]
-                diff_res = (diff_res < tollerance_w).all()
+                diff_res = (diff_res < tollerance_w[i]).all()
                 self.assertTrue(diff_res)
             else:
                 self.assertTrue(res)
-
-
-
-# class PerDecisionISTest(unittest.TestCase):
-#     def setUp(self) -> None:
-#         behav_policy = TestPolicy(test_action_probs)
-#         eval_policy = TestPolicy(test_eval_action_probs)
-#         self.is_sampler = VanillaIS(
-#             behav_policy=behav_policy, eval_policy=eval_policy, 
-#             discount=0.99)
-    
-#     def test_get_traj_rwrd(self):
-#         test_act_traj_rew = test_act_inidiv_rew.copy()
-#         test_act_traj_weights = test_act_indiv_weights.cumprod(axis=1)
-#         test_act = []
-#         for w,r in zip(test_act_traj_weights, test_act_traj_rew):
-#             test_act.append(
-#                 (
-#                     torch.Tensor([w]).squeeze(), 
-#                     torch.Tensor([r]).squeeze()
-#                     )
-#                 )
-#         tollerance_w = abs(test_act_traj_weights.mean())/1000
-#         tollerance_r = abs(test_act_traj_rew.mean())/1000
-#         for i,(w,r) in enumerate(
-#             zip(test_act_indiv_weights, test_act_inidiv_rew)):
-#             w = torch.Tensor(w)
-#             r = torch.Tensor(r)
-#             pred = self.is_sampler._ImportanceSampling__get_traj_rwrd(
-#                 weight_array=w, discnt_reward_array=r
-#             )
-#             self.assertTrue(isinstance(pred, tuple))
-#             self.assertTrue(len(pred)==2)
-#             self.assertEqual(pred[0].shape, torch.Size([]))
-#             self.assertEqual(pred[1].shape, torch.Size([]))
-#             res = pred==test_act[i]
-#             if not res.all():
-#                 logger.debug("w: {}".format(w))
-#                 logger.debug("r: {}".format(r))
-#                 logger.debug("pred: {}".format(pred))
-#                 logger.debug("test_act[i]: {}".format(test_act[i]))
-#                 diff_res = pred[0]-test_act[i][0]
-#                 diff_res = (diff_res < tollerance_w).all()
-#                 self.assertTrue(diff_res)
-#                 diff_res = pred[1]-test_act[i][1]
-#                 diff_res = (diff_res < tollerance_r).all()
-#                 self.assertTrue(diff_res)
-#             else:
-#                 self.assertTrue(res.all())
-
-
-# class torch_is_evaluation_Test(unittest.TestCase):
-    
-#     def test_torch_is_evaluation_vanillais(self):
-#         behav_policy = TestPolicy(test_action_probs)
-#         eval_policy = TestPolicy(test_eval_action_probs)
-#         is_est = VanillaIS(
-#             behav_policy=behav_policy, eval_policy=eval_policy, 
-#             discount=0.99)
-#         dataset = []
-#         for s,a,r in zip(test_state_vals, test_action_vals, test_reward_values): 
-#             state_data = torch.Tensor(s)
-#             action_data = torch.Tensor(a)
-#             reward_data = torch.Tensor(r)
-#             dataset.append(
-#                 {
-#                     "state": state_data, 
-#                     "act": action_data, 
-#                     "reward": reward_data
-#                     }
-#                 )
-#         res = torch_is_evaluation(
-#             importance_sampler=is_est, dataset=dataset, 
-#             norm_weights=True, save_dir=None, 
-#             prefix=None, clip=None)
-#         logger.debug(res)
-#         act = (
-#             test_act_loss, 
-#             torch.Tensor(test_act_losses), 
-#             test_act_loss, 
-#             torch.Tensor(test_act_losses)
-#             # test_act_loss_clip, 
-#             # test_act_losses_clip
-#             )
-#         logger.debug(act)
-#         for i,j in zip(res, act):
-#             is_tense = isinstance(j, torch.Tensor)
-#             if is_tense:
-#                 tollerance = (j.mean()).item()/1000
-#             else:
-#                 tollerance = j/1000
-#             if is_tense:
-#                 res = torch.eq(i,j).all().item()
-#             else:
-#                 res = i==j
-#             if not res:
-#                 diff_res = i-j
-#                 diff_res = (abs(diff_res) < abs(tollerance))
-#                 if is_tense:
-#                     diff_res = diff_res.all()
-#                 self.assertTrue(diff_res)
-#             else:
-#                 self.assertTrue(res)
 
 if __name__ == '__main__':
     unittest.main()

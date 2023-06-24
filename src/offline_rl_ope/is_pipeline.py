@@ -5,7 +5,7 @@ import pickle
 import torch
 from typing import Dict, List, Tuple
 
-from .components.ImportanceSampling import ImportanceSampling
+from .components.ImportanceSampler import ImportanceSampler
 
 logger = logging.getLogger("offline_rl_ope")
 
@@ -47,11 +47,11 @@ def eval_weight_array(weight_res:torch.Tensor, discnt_reward_res:torch.Tensor,
     return loss, losses, clip_loss, clip_losses, weight_res, clip_weight_res
 
 
-def torch_is_evaluation(importance_sampler:ImportanceSampling, 
+def torch_is_evaluation(importance_sampler:ImportanceSampler, 
                         dataset:torch.utils.data.Dataset, 
                         norm_weights:bool=False, save_dir:str=None, 
                         prefix:str=None, clip:float=None)->Tuple:
-    ws, rs, ncs = importance_sampler.get_dataset_w_r(dataset=dataset)
+    ws, ncs = importance_sampler.get_dataset_w(dataset=dataset)
     
     logger.debug("ws: {}".format(ws))
     logger.debug("rs: {}".format(rs))

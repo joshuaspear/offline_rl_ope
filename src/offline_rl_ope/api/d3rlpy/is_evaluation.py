@@ -6,7 +6,7 @@ from d3rlpy.dataset import Episode
 
 from ...is_pipeline import eval_weight_array
 from ...components.Policy import Policy, D3RlPyDeterministic
-from ...components.ImportanceSampling import ImportanceSampling
+from ...components.ImportanceSampler import ImportanceSampler
 from .scorers import MultiOutputCache
 from .utils import Wrapper
 
@@ -22,7 +22,7 @@ class D3RlPyTorchAlgoPredict:
 class TorchISEvalD3rlpyWrap(Wrapper):
     """Wrapper class for performing importance sampling
     """
-    def __init__(self, importance_sampler:ImportanceSampling,
+    def __init__(self, importance_sampler:ImportanceSampler,
                  discount:float, behav_policy:Policy, episodes: List[Episode], 
                  norm_weights:bool=False, clip:float=None, is_kwargs={}, 
                  unique_pol_acts = [0,1], gpu:bool=False

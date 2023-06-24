@@ -1,1 +1,1 @@
-from . import ImportanceSampling, Policy, utils
+from . import ImportanceSampler, Policy, utils
