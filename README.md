@@ -21,11 +21,11 @@
 
 #### OPE methods
 * Importance sampling:
- * Weighted
- * Per decision
- * Clipped
+  * Weighted
+  * Per decision
+  * Clipped
 * Fitted Q-Evaluation (via d3rlpy)
-* Doubly robust
+* Doubly robust:
   * Weighted
   * Per decision
   * Clipped
