@@ -17,6 +17,7 @@ class ISWeightCalculator:
         self.__behav_policy = behav_policy
         self.is_weights = None
         self.weight_msk = None
+        self.policy_actions = None
         
     def get_traj_w(self, states:torch.Tensor, actions:torch.Tensor, 
                    eval_policy:Policy)->torch.Tensor:
@@ -31,15 +32,18 @@ class ISWeightCalculator:
                 weights of dimension (traj_length) and product of weights as 
                 a one dimensional tensor
         """
-        assert (len(states.shape) == 2) & (len(actions.shape) == 2)
+        if (len(states.shape) != 2) | (len(actions.shape) != 2):
+            logger.debug("states.shape: {}".format(states.shape))
+            logger.debug("actions.shape: {}".format(actions.shape))
+            raise Exception("State and actions should have 2 dimensions")
         behav_probs = self.__behav_policy(action=actions, 
                                           state=states)
-        logger.debug("behav_probs: {}".format(behav_probs))
+        #logger.debug("behav_probs: {}".format(behav_probs))
         eval_probs = eval_policy(action=actions, state=states)
-        logger.debug("eval_probs: {}".format(eval_probs))
+        #logger.debug("eval_probs: {}".format(eval_probs))
         weight_array = eval_probs/behav_probs
         weight_array = weight_array.squeeze()
-        logger.debug("weight_array: {}".format(weight_array))
+        #logger.debug("weight_array: {}".format(weight_array))
         return weight_array
     
     def get_dataset_w(self, states:List[torch.Tensor], 
@@ -79,6 +83,7 @@ class ISWeightCalculator:
                eval_policy=Policy):
         self.is_weights, self.weight_msk = self.get_dataset_w(
             states=states, actions=actions, eval_policy=eval_policy)
+        self.policy_actions = eval_policy.policy_actions
 
     def flush(self):
         self.is_weights = None

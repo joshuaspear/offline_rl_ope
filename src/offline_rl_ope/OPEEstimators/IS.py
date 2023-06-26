@@ -1,12 +1,13 @@
-from abc import ABCMeta, abstractmethod
+from abc import abstractmethod
 import torch
 from typing import List
 
 from .utils import (wis_norm_weights, norm_weights_pass, clip_weights_pass, 
                     clip_weights)
+from .base import OPEEstimatorBase
 
 
-class ISEstimatorBase(metaclass=ABCMeta):
+class ISEstimatorBase(OPEEstimatorBase):
     
     def __init__(self, norm_weights:bool, clip:float=None) -> None:
         super().__init__()

@@ -26,7 +26,7 @@ class CustomFormatter(logging.Formatter):
         return formatter.format(record)
 
 logger = logging.getLogger(logging_name)
-logger.setLevel(logging.INFO)
+logger.setLevel(logging.DEBUG)
 
 # create console handler with a higher log level
 console_handler = logging.StreamHandler()

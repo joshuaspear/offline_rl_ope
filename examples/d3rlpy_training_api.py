@@ -10,14 +10,9 @@ from sklearn.multiclass import OneVsRestClassifier
 from xgboost import XGBClassifier
 
 from offline_rl_ope.api.d3rlpy import (
-    TorchISEvalD3rlpyWrap, FqeEvalD3rlpyWrap, WrapperAccessor, 
-    EpochCallbackHandler)
-from offline_rl_ope.api.d3rlpy.scorers import (
-    DiscreteValueByActionCache)
-from offline_rl_ope.components.ImportanceSampler import VanillaIS
+    ISCallback, FQECallback, ISEstimatorScorer, EpochCallbackHandler, 
+    QueryScorer, ISDiscreteActionDistScorer, DiscreteValueByActionCallback)
 from offline_rl_ope.components.Policy import BehavPolicy
-# from offline_rl_ope.api.d3rlpy.is_evaluation import ActDistCache
-# from offline_rl_ope.components.utils import MultiOutputScorer
 
 # obtain dataset
 dataset, env = get_cartpole()
@@ -58,58 +53,11 @@ behav_est.fit(X=dataset.observations, Y=dataset.actions.reshape(-1,1))
 gbt_est = GbtEst(estimator=behav_est)
 gbt_policy_be = BehavPolicy(policy_class=gbt_est, collect_res=False)
 
-# Define an importance sampling calculation and caching object using weighted 
-# vanilla importance sampling, without clipping weights
-eval_wrap = TorchISEvalD3rlpyWrap(
-    importance_sampler=VanillaIS, behav_policy=gbt_policy_be,
-    discount=gamma, episodes=dataset.episodes, norm_weights=True, clip=None, 
-    unique_pol_acts=unique_pol_acts)
 
-# Define caching object for capturing the average value by action, according to 
-# the evaluation model across the evaluation set
-disc_val_by_act_cache = DiscreteValueByActionCache(
-    unique_action_vals=list(unique_pol_acts))
+is_callback = ISCallback(is_types=["vanilla", "per_decision"], 
+                         behav_policy=gbt_policy_be, episodes=dataset.episodes, 
+                         gpu=False, collect_act=True)
 
-# Define caching object for capturing the distribution of actions under the 
-# evaluation policy on the validation set
-act_dist_cache = ActDistCache(
-    unique_action_vals=list(unique_pol_acts), 
-    eval_wrap=eval_wrap)
-
-
-scorers = {}
-
-# Define scorer to extract the weighted IS loss from the TorchISEvalD3rlpyWrap 
-# object
-scorers.update({"loss": WrapperAccessor(item_key="loss", wrapper=eval_wrap)})
-
-# Define scorer to extract the mean IS weights from the TorchISEvalD3rlpyWrap 
-# object
-scorers.update({"weight_res_mean": WrapperAccessor(
-    item_key="weight_res_mean", wrapper=eval_wrap)})
-
-# Define scorer to extract the standard deviation of IS weights from the 
-# TorchISEvalD3rlpyWrap object
-scorers.update({"weight_res_std": WrapperAccessor(
-    item_key="weight_res_std", wrapper=eval_wrap)})
-
-# Define a scorer per action to extract the value from the 
-# DiscreteValueByActionCache object
-for i in unique_pol_acts:
-    __scor_nm = "value_by_action_{}".format(i)
-    scorers.update({
-        __scor_nm: MultiOutputScorer(value=i, cache=disc_val_by_act_cache)
-        })
-
-# Define a scorer per action to extract the probability of the action from the  
-# ActDistCache object during the IS evaluation
-for i in unique_pol_acts:
-    __scor_nm = "act_dist_{}".format(i)
-    scorers.update({
-        __scor_nm: MultiOutputScorer(value=i, cache=act_dist_cache)
-        })
-
-# Define the scorers and other hyperparameters required for the FQE evaluation
 fqe_scorers = {
     "soft_opc": soft_opc_scorer(70), 
     "init_state_val": initial_state_value_estimation_scorer
@@ -121,32 +69,57 @@ fqe_init_kwargs = {"use_gpu": False, "discrete_action": True,
 
 fqe_fit_kwargs = {"n_epochs":1}
 
-fqe_eval_wrap = FqeEvalD3rlpyWrap(
-    fqe_cls=DiscreteFQE, scorers=fqe_scorers, 
-    model_init_kwargs=fqe_init_kwargs, model_fit_kwargs=fqe_fit_kwargs, 
-    dataset=dataset)
 
-for scr in fqe_scorers.keys():
-    scorers.update({scr:WrapperAccessor(
-        item_key=scr, wrapper=fqe_eval_wrap)})
+fqe_callback = FQECallback(
+    scorers=fqe_scorers, fqe_cls=DiscreteFQE, model_init_kwargs=fqe_init_kwargs, 
+    model_fit_kwargs=fqe_fit_kwargs, dataset=dataset)
 
-# Combine both the IS and FQE calculation/caching objects into a single callback
-epoch_callback = EpochCallbackHandler([eval_wrap, fqe_eval_wrap])
 
-# Train:
-# After each epoch: 
-# * Regression weighted importance sampling will be performed and the loss, 
-#   mean IS weights, std IS weights will be recorded as well as the probability 
-#   of each action in the IS evaluation
-# * An FQE model will be trained for a single epoch and the soft OPC and 
-#   mean initial state value according to the trained FQE model
-# * The mean value according to the evaluation model on the evaluation set, 
-#   split by action
-dqn.fit(dataset.episodes, n_epochs=5, scorers=scorers, 
-        eval_episodes=dataset.episodes, epoch_callback=epoch_callback)
+dva_callback = DiscreteValueByActionCallback(
+    unique_action_vals=unique_pol_acts, episodes=dataset.episodes)
+
+
+scorers = {}
+
+scorers.update({"vanilla_is_loss": ISEstimatorScorer(
+    discount=gamma, cache=is_callback, is_type="vanilla", norm_weights=False)})
+
+scorers.update({"pd_is_loss": ISEstimatorScorer(
+    discount=gamma, cache=is_callback, is_type="per_decision", 
+    norm_weights=True)})
+
+scorers.update({"vanilla_wis_loss": ISEstimatorScorer(
+    discount=gamma, cache=is_callback, is_type="vanilla", norm_weights=False)})
+
+scorers.update({"pd_wis_loss": ISEstimatorScorer(
+    discount=gamma, cache=is_callback, is_type="per_decision", 
+    norm_weights=True)})
+
+for act in unique_pol_acts:
+    scorers.update(
+        {
+            "action_dist_{}".format(act): ISDiscreteActionDistScorer(
+                cache=is_callback, act=act)
+            }
+        )
+    scorers.update(
+        {
+            "action_value_{}".format(act): QueryScorer(
+                cache=dva_callback, query_key=act)
+            }
+        )
+    
+for scr in fqe_scorers:
+    scorers.update({scr: QueryScorer(cache=fqe_callback, query_key=scr)})
+
+epoch_callback = EpochCallbackHandler([is_callback, fqe_callback, dva_callback])
+
+dqn.fit(dataset.episodes, n_epochs=2, scorers=scorers, 
+        eval_episodes=dataset.episodes, 
+        epoch_callback=epoch_callback)
 
 # The FQE model dumps results to a temporary location. Clean this up on close!
-fqe_eval_wrap.clean_up()
+fqe_callback.clean_up()
 
 # evaluate trained algorithm
 evaluate_on_environment(env, render=True)(dqn)

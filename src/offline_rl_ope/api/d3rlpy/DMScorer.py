@@ -1,21 +1,23 @@
-from typing import Callable, Dict
+from typing import Callable, Dict, List
 import shutil
 import os
 import numpy as np
 from d3rlpy.ope.fqe import _FQEBase
 from d3rlpy.metrics.scorer import (AlgoProtocol)
-from d3rlpy.dataset import MDPDataset 
-from .utils import Wrapper
+from d3rlpy.dataset import MDPDataset
+from d3rlpy.algos.base import AlgoBase
+from d3rlpy.dataset import Episode
 
-class FqeEvalD3rlpyWrap(Wrapper):
-    """ Wrapper class for performing Fitted Q Evaluation
+from .utils import QueryCallbackBase
+
+class FQECallback(QueryCallbackBase):
+    """ Scorer class for performing Fitted Q Evaluation
     """
     
     def __init__(self, scorers:Dict[str, Callable], fqe_cls:_FQEBase, 
                  model_init_kwargs:Dict, model_fit_kwargs:Dict,  
                  dataset:MDPDataset, env=None
                  ) -> None:
-        super().__init__(scorers_nms=list(scorers.keys()))
         self.__scorers = scorers
         self.__dataset = dataset
         self.__fqe_cls = fqe_cls
@@ -26,7 +28,7 @@ class FqeEvalD3rlpyWrap(Wrapper):
         os.mkdir(self.__logs_loc)
         self.__env = env
             
-    def eval(self, algo: AlgoProtocol, epoch, total_step):
+    def __call__(self, algo: AlgoProtocol, epoch, total_step):
         fqe  = self.__fqe_cls(algo=algo, **self.__model_init_kwargs)
         if self.__env is not None:
             fqe.build_with_env(self.__env)
@@ -48,7 +50,8 @@ class FqeEvalD3rlpyWrap(Wrapper):
                 lines = lines.reshape(-1,1)
             res[scr] = lines[-1:,-1].item()
         self.__cur_exp += 1
-        return res
-                
+        self.cache = res
+
+    
     def clean_up(self):
         shutil.rmtree(self.__logs_loc)

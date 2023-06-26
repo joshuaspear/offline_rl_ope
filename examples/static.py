@@ -16,7 +16,7 @@ from offline_rl_ope.components.Policy import BehavPolicy, D3RlPyDeterministic
 from offline_rl_ope.components.ImportanceSampler import ISWeightOrchestrator
 from offline_rl_ope.OPEEstimators import ISEstimator, DREstimator, D3rlpyQlearnDM
 
-from offline_rl_ope.api.d3rlpy.is_evaluation import D3RlPyTorchAlgoPredict
+from offline_rl_ope.api.d3rlpy.ISScorer import D3RlPyTorchAlgoPredict
 
 # obtain dataset
 dataset, env = get_cartpole()
