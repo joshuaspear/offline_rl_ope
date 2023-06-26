@@ -52,51 +52,6 @@ class ISCallback(ISWeightOrchestrator, OPECallbackBase):
         self.update(states=self.states, actions=self.actions, 
                     eval_policy=eval_policy)
         
-        # weight_res = []
-        # discnt_reward_res = []
-        # norm_conts = []
-        # # For each trajectory in an input dataset, get a list of the weights
-        # # and rewards for each trajectory
-        # # TODO: Consolodate with is_pipeline code!
-        # for episode in self.episodes:
-        #     weight, discnt_reward, norm_cont = is_calculator.get_traj_w_r(
-        #         state=torch.Tensor(episode.observations), 
-        #         action=torch.Tensor(episode.actions.reshape(-1,1)), 
-        #         reward=torch.Tensor(episode.rewards.reshape(-1,1))
-        #         )
-        #     weight_res.append(weight)
-        #     discnt_reward_res.append(discnt_reward)
-        #     norm_conts.append(norm_cont)
-
-        # if self.norm_weights:
-        #     norm_val = torch.sum(torch.Tensor(norm_conts))
-        #     weight_res = [w/norm_val for w in weight_res]
-        # else:
-        #     weight_res = [w/len(self.episodes) for w in weight_res]
-        
-        # weight_res = torch.concat(weight_res)
-        # discnt_reward_res = torch.concat(discnt_reward_res)
-    
-        # loss, _, clip_loss, _, weight_res, clip_weight_res = eval_weight_array(
-        #     weight_res=weight_res, discnt_reward_res=discnt_reward_res,
-        #     save_dir=None, prefix=None, clip=self.clip)
-        # # TODO: Assumes 1 dimensional action!
-        # eval_policy_acts = [tens.squeeze().detach().numpy().reshape(-1) 
-        #                     for tens in eval_policy.policy_actions]
-        # eval_policy_acts = np.concatenate(eval_policy_acts)
-        # action_dist = {}
-        # for i in self.unique_pol_acts:
-        #     action_dist[i] = (
-        #         (eval_policy_acts == i).sum()/len(eval_policy_acts)
-        #     )
-        # res = {
-        #     "action_dist": action_dist,
-        #     "loss": loss,
-        #     "weight_res_mean": weight_res.mean(), 
-        #     "weight_res_std": weight_res.std()
-        # }
-        # return res
-
 class ISEstimatorScorer(OPEEstimatorScorerBase, ISEstimator):
     
     def __init__(self, discount, cache:ISCallback, is_type:str, 

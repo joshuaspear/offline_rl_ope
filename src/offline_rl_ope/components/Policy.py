@@ -31,12 +31,19 @@ class Policy(metaclass=ABCMeta):
 
     
     @abstractmethod
-    def __call__(self, state:torch.Tensor, action:torch.Tensor):
-        """Provides the probability of each state-action pair under the policy
+    def __call__(self, state:torch.Tensor, action:torch.Tensor)->torch.Tensor:
+        """_summary_
 
         Args:
-            state (torch.Tensor): _description_
-            action (torch.Tensor): _description_
+            state (torch.Tensor): Tensor of dimension (traj_length, state dim)
+            action (torch.Tensor): Tensor of dimension 
+                (traj_length, number of unique actions). Note, this is likely 
+                (traj_length,1) if for example a discrete action space has been 
+                flattened from [0,1]^2 to [0,1,2,3]
+
+        Returns:
+            torch.Tensor: Tensor of dimension (traj_length, 1), defining the 
+            state-action probabilities
         """
         pass
 
@@ -72,7 +79,7 @@ class D3RlPyDeterministic(Policy):
             self.__postproc_tens = lambda x: x
         
     
-    def __call__(self, state: torch.Tensor, action: torch.Tensor):
+    def __call__(self, state: torch.Tensor, action: torch.Tensor)->torch.Tensor:
         state = self.__preproc_tens(state)
         greedy_action = self.policy_class(x=state).view(-1,1)
         greedy_action = self.__postproc_tens(greedy_action)

@@ -1,0 +1,5 @@
+Cython==0.29.33
+d3rlpy==@ git+git+https://github.com/takuseno/d3rlpy.git
+numpy==1.21.5
+pytest==7.3.0
+pytest-mock==3.10.0

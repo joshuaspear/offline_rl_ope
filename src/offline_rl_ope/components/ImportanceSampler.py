@@ -5,7 +5,6 @@ import numpy as np
 import torch
 from torch.nn.functional import pad
 
-from ..Dataset import ISEpisode
 from .Policy import Policy
 
 
@@ -25,12 +24,12 @@ class ISWeightCalculator:
         for each timestep (t) Tensor(\pi_{e}(a_{t}|s_{t})/\pi_{b}(a_{t}|s_{t}))
         Args:
             states (torch.Tensor): Tensor of dimension (traj_length, state size)
-            actions (torch.Tensor): Tensor of dimension (traj_length, action size)
+            actions (torch.Tensor): Tensor of dimension 
+                (traj_length, action size)
 
         Returns:
-            Tuple[torch.Tensor]: Tuple of tensors defining the timestep IS 
-                weights of dimension (traj_length) and product of weights as 
-                a one dimensional tensor
+            torch.Tensor: Tensor of dimension (traj_length) defining the 
+            propensity weights for the input trajectory
         """
         if (len(states.shape) != 2) | (len(actions.shape) != 2):
             logger.debug("states.shape: {}".format(states.shape))
@@ -50,6 +49,27 @@ class ISWeightCalculator:
                       actions:List[torch.Tensor], 
                       eval_policy:Policy
                       )->Tuple[torch.Tensor]:
+        """_summary_
+
+        Args:
+            states (List[torch.Tensor]): List of input Tensors of dimensions
+            (traj_length, number of states)
+            actions (List[torch.Tensor]): List of input Tensors of dimensions
+                (traj_length, number of actions). Note, this is likely 
+                (traj_length,1) if for example a discrete action space has been 
+                flattened from [0,1]^2 to [0,1,2,3]
+            eval_policy (Policy): Policy class defining the target policy to be 
+                evaluated
+
+        Returns:
+            Tuple[torch.Tensor]: Tuple of tensors where:
+                weight_res is a (# trajectories, max(traj_length)) Tensor. 
+                weight_res[i,j] defines the jth timestep propensity weight for 
+                the ith trajectory
+                weight_msk is a (# trajectories, max(traj_length)) binary 
+                Tensor. weight_msk[i,j] defines whether the jth timestep of the
+                ith trajectory was observed
+        """
         assert len(states) == len(actions)
         # weight_res = torch.zeros(size=(len(states),h))
         # weight_msk = torch.zeros(size=(len(states),h))
@@ -111,14 +131,11 @@ class ImportanceSampler(metaclass=ABCMeta):
 
         Args:
             is_weights (torch.Tensor): Tensor of dimension 
-                (# trajectories, traj_length)
-
-        Raises:
-            NotImplementedError: Expected implementation in child class
+                (# trajectories, max(traj_length))
             
         Returns: 
             torch.Tensor: Transformed weight array of dimension 
-                (# trajectories, traj_length)
+                (# trajectories, max(traj_length))
         """
         pass
         

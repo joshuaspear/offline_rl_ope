@@ -83,8 +83,9 @@ class ISEstimator(ISEstimatorBase):
             discnt_rewards (torch.Tensor): Tensor of discounted rewards  
                 of dimension (# trajectories, max_horizon). Trajectories with 
                 length < max_horizon should have zero weight imputed
-            is_msk (torch.Tensor): Tensor of dimension (# trajectories, max_horizon) 
-                defining the lengths of individual trajectories
+            is_msk (torch.Tensor): Tensor of dimension 
+                (# trajectories, max_horizon) defining the lengths of individual 
+                trajectories
 
         Returns:
             float: OPE result
