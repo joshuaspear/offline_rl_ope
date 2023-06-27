@@ -4,6 +4,21 @@
 
 **IMPORTANT: THIS IS A BETA RELEASE. FUNCTIONALITY IS STILL BEING TESTED** Feedback/contributions are welcome :) 
 
+### Testing progress
+- [x] components/
+  - [x] ImportanceSampler.py
+  - [x] Policy.py
+- [ ] OPEEstimation
+  - [x] IS.py
+  - [x] utils.py
+  - [ ] DirectMethod.py
+  - [ ] DoublyRobust.py
+- [ ] LowerBounds
+- [ ] api/d3rlpy
+
+#### Overview
+The core importance sampling functionality has been tested however, there still exists some funtionality for which unit tests have not been written. This functionality was deemed lower priority. The d3rlpy/api for importance sampling adds minimal additional functionality therefore, it is likely to function as expected however, no sepcific unit testing has been implemented! 
+
 **IMPORTANT**:
 * More documentation needs to be added however, please refer to examples/ for an illustration of the functionality
   * examples/static.py provides an illustration of the package being used for evaluation post training. Whilst the d3rlpy package is used for model training, the script is agnostic to the evaluation model used
