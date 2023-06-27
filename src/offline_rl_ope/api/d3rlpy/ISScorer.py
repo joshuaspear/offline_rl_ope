@@ -1,15 +1,12 @@
 import logging
-import numpy as np
 import torch
 from typing import Dict, List, Callable
 from d3rlpy.metrics.scorer import AlgoProtocol
 from d3rlpy.dataset import Episode
 
-from ...is_pipeline import eval_weight_array
 from ...components.Policy import Policy, D3RlPyDeterministic
 from ...components.ImportanceSampler import ISWeightOrchestrator
 from ...OPEEstimators import ISEstimator
-from .misc_scorers import QueryScorer
 from .utils import OPECallbackBase, OPEEstimatorScorerBase
 
 logger = logging.getLogger("offline_rl_ope")

@@ -1,18 +1,12 @@
-from typing import Any, Callable, Iterator, List, Optional, Tuple, Union, cast
-from typing_extensions import Protocol
-
+from typing import List, cast
 import logging
-from typing import Dict
 import numpy as np
 import pandas as pd
 
 from d3rlpy.metrics.scorer import _make_batches, WINDOW_SIZE, AlgoProtocol
 from d3rlpy.dataset import Episode
 
-from .utils import OPECallbackBase
-
 from .utils import OPEEstimatorScorerBase, QueryCallbackBase
-from ...components.utils import MultiOutputCache
 
 logger = logging.getLogger("offline_rl_ope")
 
