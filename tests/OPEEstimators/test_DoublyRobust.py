@@ -89,7 +89,7 @@ class DREstimatorTest(unittest.TestCase):
         tol = (test_res.mean()/1000).item()
         np.testing.assert_allclose(pred_res, test_res, atol=tol)
         
-    def test_predict(self):
+    def test_predict_traj_rewards(self):
         dm_model = MockDMModel()
         def q_side_effect(state:torch.Tensor, action:torch.Tensor):
             lkp = {
@@ -115,9 +115,11 @@ class DREstimatorTest(unittest.TestCase):
         actions = [torch.Tensor(x) for x in test_action_vals]
         
         test_res = []
-        pred_res = is_est.predict(rewards=rewards, states=states, 
-                                  actions=actions, weights=weight_test_res, 
-                                  discount=gamma, is_msk=msk_test_res)
+        pred_res = is_est.predict_traj_rewards(rewards=rewards, states=states, 
+                                               actions=actions, 
+                                               weights=weight_test_res, 
+                                               discount=gamma, 
+                                               is_msk=msk_test_res)
         for idx, (r,s,a,w,msk) in enumerate(zip(rewards, states, actions, 
                                                 weight_test_res, msk_test_res)):
             p = torch.masked_select(w, msk>0)
@@ -125,8 +127,10 @@ class DREstimatorTest(unittest.TestCase):
                 reward_array=r, discount=gamma, state_array=s, action_array=a, 
                 weight_array=p)
             test_res.append(__test_res.numpy())
-        test_res = np.concatenate(test_res).mean()
-        tol = (test_res/1000).item()
+        #test_res = np.concatenate(test_res).mean()
+        test_res = np.concatenate(test_res)
+        tol = (test_res.mean()/1000).item()
+        self.assertEqual(pred_res.shape, torch.Size((len(rewards),)))
         np.testing.assert_allclose(pred_res.numpy(),test_res, atol=tol)
         
             

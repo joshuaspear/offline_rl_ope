@@ -14,9 +14,11 @@ class DREstimator(ISEstimatorBase):
     """
     
     def __init__(self, dm_model:DirectMethodBase, norm_weights: bool, 
-                 clip: float = None, ignore_nan:bool=False
+                 clip: float = None, cache_traj_rewards:bool=False, 
+                 ignore_nan:bool=False
                  ) -> None:
-        super().__init__(norm_weights=norm_weights, clip=clip)
+        super().__init__(norm_weights=norm_weights, clip=clip, 
+                         cache_traj_rewards=cache_traj_rewards)
         self.dm_model = dm_model
         if ignore_nan:
             self.ignore_nan = self.__ignore_nan
@@ -90,10 +92,11 @@ class DREstimator(ISEstimatorBase):
                                       gamma=discount, q_t=q_t)
         return v_dr
 
-    def predict(self, rewards:List[torch.Tensor], states:List[torch.Tensor], 
-                actions:List[torch.Tensor], weights:torch.Tensor, 
-                discount:float, is_msk:torch.Tensor
-                )->torch.Tensor:
+    def predict_traj_rewards(self, rewards:List[torch.Tensor], 
+                             states:List[torch.Tensor], 
+                             actions:List[torch.Tensor], weights:torch.Tensor, 
+                             discount:float, is_msk:torch.Tensor
+                             )->torch.Tensor:
         """_summary_
 
         Args:
@@ -105,8 +108,8 @@ class DREstimator(ISEstimatorBase):
             is_msk (torch.Tensor): _description_
 
         Returns:
-            torch.Tensor: tensor of size 0 defining the mean doubly robust 
-            value across the dataset
+            torch.Tensor: tensor of size (# trajectories,) defining the 
+            individual trajectory rewards
         """
         test = (
             len(rewards)==len(states)==len(actions)==weights.shape[0]==\
@@ -124,5 +127,4 @@ class DREstimator(ISEstimatorBase):
                 reward_array=r, state_array=s, action_array=a, 
                 weight_array=w, discount=discount) 
             reward_res[i] = reward
-        reward_res = reward_res.sum()/len(reward_res)
         return reward_res

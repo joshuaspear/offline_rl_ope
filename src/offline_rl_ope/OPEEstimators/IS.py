@@ -9,8 +9,10 @@ from .base import OPEEstimatorBase
 
 class ISEstimatorBase(OPEEstimatorBase):
     
-    def __init__(self, norm_weights:bool, clip:float=None) -> None:
-        super().__init__()
+    def __init__(self, norm_weights:bool, clip:float=None, 
+                 cache_traj_rewards:bool=False
+                 ) -> None:
+        super().__init__(cache_traj_rewards)
         if norm_weights:
             self.norm_weights = wis_norm_weights
         else:
@@ -27,19 +29,14 @@ class ISEstimatorBase(OPEEstimatorBase):
             traj_is_weights=weights, clip=self.clip)
         weights = self.norm_weights(traj_is_weights=weights, is_msk=is_msk)
         return weights
-
-    @abstractmethod
-    def predict(self, rewards:List[torch.Tensor], states:List[torch.Tensor], 
-                actions:List[torch.Tensor], weights:torch.Tensor, 
-                discount:float, is_msk:torch.Tensor
-                )->float:
-        pass
-    
+        
 
 class ISEstimator(ISEstimatorBase):
     
-    def __init__(self, norm_weights: bool, clip: float = None) -> None:
-        super().__init__(norm_weights, clip)
+    def __init__(self, norm_weights: bool, clip: float = None,
+                 cache_traj_rewards:bool=False
+                 ) -> None:
+        super().__init__(norm_weights, clip, cache_traj_rewards)
         
     def get_dataset_discnt_reward(self, rewards:List[torch.Tensor], 
                                   discount:float, h:int)->torch.Tensor:
@@ -70,10 +67,11 @@ class ISEstimator(ISEstimatorBase):
         discnt_reward = reward_array*discnt_vals
         return discnt_reward
 
-    def predict(self, rewards:List[torch.Tensor], states:List[torch.Tensor], 
-                actions:List[torch.Tensor], weights:torch.Tensor, 
-                discount:float, is_msk:torch.Tensor
-                )->float:
+    def predict_traj_rewards(self, rewards:List[torch.Tensor], 
+                             states:List[torch.Tensor], 
+                             actions:List[torch.Tensor], weights:torch.Tensor, 
+                             discount:float, is_msk:torch.Tensor
+                             )->torch.Tensor:
         """_summary_
 
         Args:
@@ -88,14 +86,14 @@ class ISEstimator(ISEstimatorBase):
                 trajectories
 
         Returns:
-            float: OPE result
+            torch.Tensor: tensor of size (# trajectories,) defining the 
+            individual trajectory rewards
         """
         h:int = weights.shape[1]
         discnt_rewards = self.get_dataset_discnt_reward(
             rewards=rewards, discount=discount, h=h)
         weights = self.process_weights(weights=weights, is_msk=is_msk)
         res:torch.Tensor = torch.mul(discnt_rewards, weights).sum(axis=1)
-        res = res.sum()/len(res)
         return res
     
     

@@ -16,6 +16,7 @@ from offline_rl_ope.components.Policy import BehavPolicy, D3RlPyDeterministic
 from offline_rl_ope.components.ImportanceSampler import ISWeightOrchestrator
 from offline_rl_ope.OPEEstimators import (
     ISEstimator, DREstimator, D3rlpyQlearnDM)
+from offline_rl_ope.LowerBounds.HCOPE import get_lower_bound
 
 from offline_rl_ope.api.d3rlpy.ISScorer import D3RlPyTorchAlgoPredict
 
@@ -96,7 +97,7 @@ is_weight_calculator.update(
 
 fqe_dm_model = D3rlpyQlearnDM(model=discrete_fqe)
 
-is_estimator = ISEstimator(norm_weights=False)
+is_estimator = ISEstimator(norm_weights=False, cache_traj_rewards=True)
 wis_estimator = ISEstimator(norm_weights=True)
 w_dr_estimator = DREstimator(dm_model=fqe_dm_model, norm_weights=True, 
                              ignore_nan=True)
@@ -115,6 +116,8 @@ res = is_estimator.predict(
     is_msk=is_weight_calculator.weight_msk, states=[], actions=[]
 )
 print(res)
+traj_rewards = is_estimator.traj_rewards_cache.squeeze().numpy()
+print(get_lower_bound(X=traj_rewards, delta=0.05))
 
 res = wis_estimator.predict(
     rewards=[ep.reward for ep in episodes], discount=0.99,
@@ -137,3 +140,4 @@ res = w_dr_estimator.predict(
     actions=[ep.action for ep in episodes],
 )
 print(res)
+

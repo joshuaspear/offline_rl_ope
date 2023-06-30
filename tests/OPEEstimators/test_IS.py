@@ -49,18 +49,19 @@ class ISEstimatorTest(unittest.TestCase):
                                    np.abs(reward_test_res.mean().numpy()))
         
     
-    def test_predict(self):
+    def test_predict_traj_rewards(self):
         def __mock_return(rewards, discount, h):
             return reward_test_res
         self.is_estimator.get_dataset_discnt_reward = MagicMock(
             side_effect=__mock_return)
         rewards = [torch.Tensor(r) for r in test_reward_values]
-        pred_res = self.is_estimator.predict(
+        pred_res = self.is_estimator.predict_traj_rewards(
             rewards=rewards, actions=[], states=[], weights=weight_test_res,
             discount=gamma, is_msk=msk_test_res)
         test_res = np.multiply(reward_test_res.numpy(), weight_test_res.numpy())
-        test_res = test_res.sum(axis=1).mean()
-        tol = test_res/1000
-        self.assertEqual(pred_res.shape, torch.Size(()))
+        test_res=test_res.sum(axis=1)
+        #test_res = test_res.sum(axis=1).mean()
+        tol = test_res.mean()/1000
+        self.assertEqual(pred_res.shape, torch.Size((len(rewards),)))
         np.testing.assert_allclose(pred_res.numpy(), test_res, atol=tol)
         
