@@ -1,6 +1,12 @@
 import logging
 import os
 
+from ._version import __version__
+
+from . import (
+    OPEEstimators, api, LowerBounds, components
+)
+
 logging_name = "offline_rl_ope"
 
 class CustomFormatter(logging.Formatter):
@@ -26,7 +32,7 @@ class CustomFormatter(logging.Formatter):
         return formatter.format(record)
 
 logger = logging.getLogger(logging_name)
-logger.setLevel(logging.DEBUG)
+logger.setLevel(logging.INFO)
 
 # create console handler with a higher log level
 console_handler = logging.StreamHandler()

@@ -8,16 +8,18 @@
 - [x] components/
   - [x] ImportanceSampler.py
   - [x] Policy.py
-- [ ] OPEEstimation
+- [x] OPEEstimation
   - [x] IS.py
   - [x] utils.py
-  - [ ] DirectMethod.py
-  - [ ] DoublyRobust.py
+  - [x] DirectMethod.py*
+  - [x] DoublyRobust.py
 - [ ] LowerBounds
 - [ ] api/d3rlpy
 
+* Insufficient functionality to test i.e., currently only wrapper classes are implemented for the OPEEstimation/DirectMethod.py
+
 #### Overview
-The core importance sampling functionality has been tested however, there still exists some funtionality for which unit tests have not been written. This functionality was deemed lower priority. The d3rlpy/api for importance sampling adds minimal additional functionality therefore, it is likely to function as expected however, no sepcific unit testing has been implemented! 
+Basic unit testing has been implemented for all the core functionality of the package. The d3rlpy/api for importance sampling adds minimal additional functionality therefore, it is likely to function as expected however, no sepcific unit testing has been implemented! 
 
 **IMPORTANT**:
 * More documentation needs to be added however, please refer to examples/ for an illustration of the functionality
@@ -61,6 +63,10 @@ The core importance sampling functionality has been tested however, there still 
 ### Future work
 * Async/multithread support
 * Additional estimators:
-  * (Weighted) Doubly robust
+  * DualDICE
   * MAGIC
+  * Extended DR estimator as per equation 12 in https://arxiv.org/pdf/1511.03722.pdf
+* APIs
+  * Extend d3rlpy
+  * Add additional apis e.g. for stable baselines
 * Continuous action spaces

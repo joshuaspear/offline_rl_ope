@@ -9,7 +9,7 @@ HERE = pathlib.Path(__file__).parent
 README = (HERE / "README.md").read_text()
 
 # get __version__ variable
-exec(open(os.path.join(HERE, '_version.py')).read())
+exec(open(os.path.join(HERE, "src", "offline_rl_ope", '_version.py')).read())
 
 setuptools.setup(
     name='offline_rl_ope',

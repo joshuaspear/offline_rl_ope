@@ -1,6 +1,6 @@
 import numpy as np
 import torch
-from typing import Callable, List, Dict, Tuple
+from typing import Callable, List, Dict, Tuple, Union, Literal
 import math
 
 from .IS import ISEstimatorBase
@@ -9,6 +9,9 @@ from .DirectMethod import DirectMethodBase
 
 
 class DREstimator(ISEstimatorBase):
+    """ Doubly robust estimator implemented as per: 
+    https://arxiv.org/pdf/1511.03722.pdf
+    """
     
     def __init__(self, dm_model:DirectMethodBase, norm_weights: bool, 
                  clip: float = None, ignore_nan:bool=False
@@ -30,7 +33,30 @@ class DREstimator(ISEstimatorBase):
     def __raise_nan(self, p_t):
         return p_t
     
-    def __update_step(self, v_t, p_t, r_t, v_dr_t, gamma, q_t):
+    def __update_step(self, v_t:torch.Tensor, p_t:torch.Tensor, 
+                      r_t:torch.Tensor, v_dr_t:torch.Tensor, gamma:torch.Tensor, 
+                      q_t:torch.Tensor)->torch.Tensor:
+        """ Predicts the time t+1 doubly robust value prediction based on time
+            t values
+
+        Args:
+            v_t (torch.Tensor): tensor of size 0, representing the time t state 
+                value from a Direct Method
+            p_t (torch.Tensor): tensor of size 0, representing the time t 
+                importance weight
+            r_t (torch.Tensor): tensor of size 0, representing the time t 
+                observed reward
+            v_dr_t (torch.Tensor): tensor of size 0, representing the time t 
+                doubly robust value prediction
+            gamma (torch.Tensor): tensor of size 0, representing the time t 
+                one step discount factor. Note, this is usually kept constant
+            q_t (torch.Tensor): tensor of size 0, representing the time t 
+                state-action value from a Direct Method.
+
+        Returns:
+            torch.Tensor: tensor of size 0, representing the doubly robust value
+                prediction at time t+1
+        """
         p_t = self.ignore_nan(p_t)
         return v_t + p_t*(r_t + gamma*v_dr_t - q_t)
     
@@ -48,21 +74,40 @@ class DREstimator(ISEstimatorBase):
 
         Returns:
             torch.Tensor: Tensor of discounted reward values of dimension 
-                (traj_length)
+            (traj_length)
         """
         v_dr = torch.tensor(0)
         discount = torch.tensor(discount)
         v:torch.Tensor = self.dm_model.get_v(state=state_array)
         q:torch.Tensor = self.dm_model.get_q(
             state=state_array, action=action_array)
+        reward_array = torch.flip(reward_array, dims=[0])
+        v = torch.flip(v, dims=[0])
+        q = torch.flip(q, dims=[0])
+        weight_array = torch.flip(weight_array, dims=[0])
         for r_t, v_t, q_t, p_t in zip(reward_array,v,q,weight_array):
-            v_dr = self.__update_step(v_t, p_t, r_t, v_dr, discount, q_t)
+            v_dr = self.__update_step(v_t=v_t, p_t=p_t, r_t=r_t, v_dr_t=v_dr, 
+                                      gamma=discount, q_t=q_t)
         return v_dr
 
     def predict(self, rewards:List[torch.Tensor], states:List[torch.Tensor], 
                 actions:List[torch.Tensor], weights:torch.Tensor, 
                 discount:float, is_msk:torch.Tensor
                 )->torch.Tensor:
+        """_summary_
+
+        Args:
+            rewards (List[torch.Tensor]): _description_
+            states (List[torch.Tensor]): _description_
+            actions (List[torch.Tensor]): _description_
+            weights (torch.Tensor): _description_
+            discount (float): _description_
+            is_msk (torch.Tensor): _description_
+
+        Returns:
+            torch.Tensor: tensor of size 0 defining the mean doubly robust 
+            value across the dataset
+        """
         test = (
             len(rewards)==len(states)==len(actions)==weights.shape[0]==\
                 is_msk.shape[0]
@@ -80,4 +125,4 @@ class DREstimator(ISEstimatorBase):
                 weight_array=w, discount=discount) 
             reward_res[i] = reward
         reward_res = reward_res.sum()/len(reward_res)
-        return reward_res    
+        return reward_res
