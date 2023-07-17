@@ -1,22 +1,23 @@
-from abc import abstractmethod
+import logging
 import torch
-from typing import List
+from typing import Any, Dict, List
 
-from .utils import (wis_norm_weights, norm_weights_pass, clip_weights_pass, 
+from .utils import (WISNormWeights, NormWeightsPass, clip_weights_pass, 
                     clip_weights)
 from .base import OPEEstimatorBase
 
+logger = logging.getLogger("offline_rl_ope")
 
 class ISEstimatorBase(OPEEstimatorBase):
     
     def __init__(self, norm_weights:bool, clip:float=None, 
-                 cache_traj_rewards:bool=False
+                 cache_traj_rewards:bool=False, norm_kwargs:Dict[str,Any] = {}
                  ) -> None:
         super().__init__(cache_traj_rewards)
-        if norm_weights:
-            self.norm_weights = wis_norm_weights
+        if norm_weights:    
+            self.norm_weights = WISNormWeights(**norm_kwargs)
         else:
-            self.norm_weights = norm_weights_pass
+            self.norm_weights = NormWeightsPass(**norm_kwargs)
         self.clip = clip
         if clip:
             self.clip_weights = clip_weights
@@ -34,9 +35,11 @@ class ISEstimatorBase(OPEEstimatorBase):
 class ISEstimator(ISEstimatorBase):
     
     def __init__(self, norm_weights: bool, clip: float = None,
-                 cache_traj_rewards:bool=False
+                 cache_traj_rewards:bool=False, norm_kwargs:Dict[str,Any] = {}
                  ) -> None:
-        super().__init__(norm_weights, clip, cache_traj_rewards)
+        super().__init__(norm_weights=norm_weights, clip=clip, 
+                         cache_traj_rewards=cache_traj_rewards, 
+                         norm_kwargs=norm_kwargs)
         
     def get_dataset_discnt_reward(self, rewards:List[torch.Tensor], 
                                   discount:float, h:int)->torch.Tensor:

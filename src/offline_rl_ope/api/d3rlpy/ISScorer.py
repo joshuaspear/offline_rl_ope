@@ -1,6 +1,6 @@
 import logging
 import torch
-from typing import Dict, List, Callable
+from typing import Any, Dict, List, Callable
 from d3rlpy.metrics.scorer import AlgoProtocol
 from d3rlpy.dataset import Episode
 
@@ -52,10 +52,12 @@ class ISCallback(ISWeightOrchestrator, OPECallbackBase):
 class ISEstimatorScorer(OPEEstimatorScorerBase, ISEstimator):
     
     def __init__(self, discount, cache:ISCallback, is_type:str, 
-                 norm_weights: bool, clip: float = None
+                 norm_weights: bool, clip: float = None, 
+                 norm_kwargs:Dict[str,Any] = {}
                  ) -> None:
         OPEEstimatorScorerBase.__init__(self, cache=cache)
-        ISEstimator.__init__(self, norm_weights=norm_weights, clip=clip)
+        ISEstimator.__init__(self, norm_weights=norm_weights, clip=clip, 
+                             norm_kwargs=norm_kwargs)
         self.is_type = is_type
         self.discount = discount
         

@@ -1,6 +1,6 @@
 import numpy as np
 import torch
-from typing import Callable, List, Dict, Tuple, Union, Literal
+from typing import Any, List, Dict
 import math
 
 from .IS import ISEstimatorBase
@@ -15,10 +15,11 @@ class DREstimator(ISEstimatorBase):
     
     def __init__(self, dm_model:DirectMethodBase, norm_weights: bool, 
                  clip: float = None, cache_traj_rewards:bool=False, 
-                 ignore_nan:bool=False
+                 ignore_nan:bool=False, norm_kwargs:Dict[str,Any] = {}
                  ) -> None:
         super().__init__(norm_weights=norm_weights, clip=clip, 
-                         cache_traj_rewards=cache_traj_rewards)
+                         cache_traj_rewards=cache_traj_rewards, 
+                         norm_kwargs=norm_kwargs)
         self.dm_model = dm_model
         if ignore_nan:
             self.ignore_nan = self.__ignore_nan
