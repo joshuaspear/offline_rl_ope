@@ -1,6 +1,6 @@
 # offline_rl_ope (BETA RELEASE)
 
-**WARNING: Weighted importance sampling was incorrectly implemented in version 1.X.X**
+**WARNING: Weighted importance sampling was incorrectly implemented in versions 1.X.X and 2.1.X, 2.2.X**
 
 **IMPORTANT: THIS IS A BETA RELEASE. FUNCTIONALITY IS STILL BEING TESTED** Feedback/contributions are welcome :) 
 
@@ -70,3 +70,9 @@ Basic unit testing has been implemented for all the core functionality of the pa
   * Extend d3rlpy
   * Add additional apis e.g. for stable baselines
 * Continuous action spaces
+
+
+### Release log
+#### 2.3.0
+* Corrected error when calculating weighted importance samples. The weight was defined as the sum rather than the mean of time t ratios
+* Implemented smoothing for weighted importance sampling to prevents nan's when valid weights are 0. 

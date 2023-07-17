@@ -99,6 +99,9 @@ fqe_dm_model = D3rlpyQlearnDM(model=discrete_fqe)
 
 is_estimator = ISEstimator(norm_weights=False, cache_traj_rewards=True)
 wis_estimator = ISEstimator(norm_weights=True)
+wis_estimator_smooth = ISEstimator(norm_weights=True, norm_kwargs={
+    "smooth_eps":0.0000001
+})
 w_dr_estimator = DREstimator(dm_model=fqe_dm_model, norm_weights=True, 
                              ignore_nan=True)
 
@@ -127,6 +130,13 @@ print(res)
 
 res = wis_estimator.predict(
     weights=is_weight_calculator["per_decision"].traj_is_weights, 
+    rewards=[ep.reward for ep in episodes], discount=0.99,
+    is_msk=is_weight_calculator.weight_msk, states=[], actions=[]
+)
+print(res)
+
+res = wis_estimator_smooth.predict(
+    weights=is_weight_calculator["vanilla"].traj_is_weights, 
     rewards=[ep.reward for ep in episodes], discount=0.99,
     is_msk=is_weight_calculator.weight_msk, states=[], actions=[]
 )

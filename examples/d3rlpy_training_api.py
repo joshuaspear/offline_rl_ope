@@ -86,10 +86,14 @@ scorers.update({"vanilla_is_loss": ISEstimatorScorer(
 
 scorers.update({"pd_is_loss": ISEstimatorScorer(
     discount=gamma, cache=is_callback, is_type="per_decision", 
-    norm_weights=True)})
+    norm_weights=False)})
 
 scorers.update({"vanilla_wis_loss": ISEstimatorScorer(
-    discount=gamma, cache=is_callback, is_type="vanilla", norm_weights=False)})
+    discount=gamma, cache=is_callback, is_type="vanilla", norm_weights=True)})
+
+scorers.update({"vanilla_wis_loss_smooth": ISEstimatorScorer(
+    discount=gamma, cache=is_callback, is_type="vanilla", norm_weights=True, 
+    norm_kwargs={"smooth_eps":0.0000001})})
 
 scorers.update({"pd_wis_loss": ISEstimatorScorer(
     discount=gamma, cache=is_callback, is_type="per_decision", 
