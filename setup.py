@@ -26,6 +26,6 @@ setuptools.setup(
     package_dir={"": "src"},
     python_requires="",
     install_requires=[
-        "d3rlpy @ git+https://github.com/takuseno/d3rlpy.git"
+        #"d3rlpy @ git+https://github.com/takuseno/d3rlpy.git"
         ],
 )
