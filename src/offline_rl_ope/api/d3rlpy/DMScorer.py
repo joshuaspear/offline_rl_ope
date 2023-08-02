@@ -1,12 +1,12 @@
-from typing import Callable, Dict, List
+from typing import Callable, Dict, Union
 import shutil
 import os
 import numpy as np
-from d3rlpy.ope.fqe import _FQEBase
-from d3rlpy.metrics.scorer import (AlgoProtocol)
+from d3rlpy.ope.fqe import FQEConfig, FQE, DiscreteFQE
 from d3rlpy.dataset import MDPDataset
-from d3rlpy.algos.base import AlgoBase
-from d3rlpy.dataset import Episode
+from d3rlpy.interface import QLearningAlgoProtocol
+from d3rlpy.base import DeviceArg
+from d3rlpy.logging import FileAdapterFactory
 
 from .utils import QueryCallbackBase
 
@@ -14,9 +14,10 @@ class FQECallback(QueryCallbackBase):
     """ Scorer class for performing Fitted Q Evaluation
     """
     
-    def __init__(self, scorers:Dict[str, Callable], fqe_cls:_FQEBase, 
-                 model_init_kwargs:Dict, model_fit_kwargs:Dict,  
-                 dataset:MDPDataset, env=None
+    def __init__(self, scorers:Dict[str, Callable], 
+                 fqe_cls:Union[FQE, DiscreteFQE], model_init_kwargs:Dict, 
+                 model_fit_kwargs:Dict, dataset:MDPDataset, env=None, 
+                 device:DeviceArg = False
                  ) -> None:
         self.__scorers = scorers
         self.__dataset = dataset
@@ -27,18 +28,21 @@ class FQECallback(QueryCallbackBase):
         self.__cur_exp = 0
         os.mkdir(self.__logs_loc)
         self.__env = env
+        self.__device = device
             
-    def __call__(self, algo: AlgoProtocol, epoch, total_step):
-        fqe  = self.__fqe_cls(algo=algo, **self.__model_init_kwargs)
+    def __call__(self, algo: QLearningAlgoProtocol, epoch:int, total_step:int):
+        fqe_config = FQEConfig(**self.__model_init_kwargs)
+        fqe = self.__fqe_cls(algo=algo, config=fqe_config, device=self.__device)
         if self.__env is not None:
             fqe.build_with_env(self.__env)
         else:
             fqe.build_with_dataset(self.__dataset)
         
-        fqe.fit(self.__dataset.episodes, eval_episodes=self.__dataset.episodes, 
-                scorers=self.__scorers, **self.__model_fit_kwargs, 
-                logdir=self.__logs_loc, with_timestamp=False,
-                experiment_name="EXP_{}".format(str(self.__cur_exp)))
+        fqe.fit(self.__dataset,  evaluators=self.__scorers, 
+                **self.__model_fit_kwargs, 
+                logger_adapter=FileAdapterFactory(root_dir=self.__logs_loc),
+                with_timestamp=False, 
+                experiment_name=f"EXP_{str(self.__cur_exp)}")
 
         res:Dict = {}
         for scr in self.__scorers:
