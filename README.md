@@ -73,6 +73,8 @@ Basic unit testing has been implemented for all the core functionality of the pa
 
 
 ### Release log
+#### 3.0.1 
+* Updated d3rlpy API to align with the 2.x release!
 #### 2.3.0
 * Corrected error when calculating weighted importance samples. The weight was defined as the sum rather than the mean of time t ratios
 * Implemented smoothing for weighted importance sampling to prevents nan's when valid weights are 0. 
