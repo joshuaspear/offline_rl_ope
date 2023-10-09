@@ -41,7 +41,7 @@ class ISWeightCalculator:
         eval_probs = eval_policy(action=actions, state=states)
         #logger.debug("eval_probs: {}".format(eval_probs))
         weight_array = eval_probs/behav_probs
-        weight_array = weight_array.squeeze()
+        weight_array = weight_array.view(-1)
         #logger.debug("weight_array: {}".format(weight_array))
         return weight_array
     

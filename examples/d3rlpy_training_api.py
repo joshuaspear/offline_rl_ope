@@ -1,13 +1,16 @@
-from d3rlpy.algos import DQN
+from d3rlpy.algos import DQNConfig
 from d3rlpy.datasets import get_cartpole
-from d3rlpy.metrics.scorer import evaluate_on_environment
-from d3rlpy.metrics.scorer import (soft_opc_scorer, 
-    initial_state_value_estimation_scorer)
+from d3rlpy.metrics import evaluate_qlearning_with_environment
+from d3rlpy.metrics import (SoftOPCEvaluator, 
+                            InitialStateValueEstimationEvaluator)
+from d3rlpy.models.q_functions import MeanQFunctionFactory
+from d3rlpy.dataset import BasicTransitionPicker
 from d3rlpy.ope import DiscreteFQE
 import numpy as np
 from sklearn.multioutput import MultiOutputClassifier
 from sklearn.multiclass import OneVsRestClassifier
 from xgboost import XGBClassifier
+import shutil
 
 from offline_rl_ope.api.d3rlpy import (
     ISCallback, FQECallback, ISEstimatorScorer, EpochCallbackHandler, 
@@ -19,7 +22,7 @@ dataset, env = get_cartpole()
 
 # setup algorithm
 gamma = 0.99
-dqn = DQN(gamma=gamma, target_update_interval=100)
+dqn = DQNConfig(gamma=gamma, target_update_interval=100).create()
 
 unique_pol_acts = np.arange(0,env.action_space.n)
 
@@ -48,7 +51,19 @@ behav_est = MultiOutputClassifier(OneVsRestClassifier(XGBClassifier(
     objective="binary:logistic")))
 
 # Fit the behaviour model
-behav_est.fit(X=dataset.observations, Y=dataset.actions.reshape(-1,1))
+observations = []
+actions = []
+tp = BasicTransitionPicker()
+for ep in dataset.episodes:
+    for i in range(ep.transition_count):
+        _transition = tp(ep,i)
+        observations.append(_transition.observation.reshape(1,-1))
+        actions.append(_transition.action)
+
+observations = np.concatenate(observations)
+actions = np.concatenate(actions)
+
+behav_est.fit(X=observations, Y=actions.reshape(-1,1))
 
 gbt_est = GbtEst(estimator=behav_est)
 gbt_policy_be = BehavPolicy(policy_class=gbt_est, collect_res=False)
@@ -59,15 +74,15 @@ is_callback = ISCallback(is_types=["vanilla", "per_decision"],
                          gpu=False, collect_act=True)
 
 fqe_scorers = {
-    "soft_opc": soft_opc_scorer(70), 
-    "init_state_val": initial_state_value_estimation_scorer
+    "soft_opc": SoftOPCEvaluator(70), 
+    "init_state_val": InitialStateValueEstimationEvaluator()
 }
 
-fqe_init_kwargs = {"use_gpu": False, "discrete_action": True, 
-                   "q_func_factory": 'mean', "learning_rate": 1e-4
-                   }
+fqe_init_kwargs = {
+    "q_func_factory": MeanQFunctionFactory(), "learning_rate": 1e-4
+    }
 
-fqe_fit_kwargs = {"n_epochs":1}
+fqe_fit_kwargs = {"n_steps":len(actions)}
 
 
 fqe_callback = FQECallback(
@@ -76,7 +91,7 @@ fqe_callback = FQECallback(
 
 
 dva_callback = DiscreteValueByActionCallback(
-    unique_action_vals=unique_pol_acts, episodes=dataset.episodes)
+    unique_action_vals=unique_pol_acts, dataset=dataset)
 
 
 scorers = {}
@@ -118,12 +133,17 @@ for scr in fqe_scorers:
 
 epoch_callback = EpochCallbackHandler([is_callback, fqe_callback, dva_callback])
 
-dqn.fit(dataset.episodes, n_epochs=2, scorers=scorers, 
-        eval_episodes=dataset.episodes, 
-        epoch_callback=epoch_callback)
+n_epochs=2
+n_steps_per_epoch = len(actions)
+n_steps = len(actions)*n_epochs
+dqn.fit(dataset, n_steps=n_steps, n_steps_per_epoch=n_steps_per_epoch, 
+        evaluators=scorers, epoch_callback=epoch_callback, 
+        with_timestamp=False)
 
 # The FQE model dumps results to a temporary location. Clean this up on close!
 fqe_callback.clean_up()
 
 # evaluate trained algorithm
-evaluate_on_environment(env, render=True)(dqn)
+evaluate_qlearning_with_environment(algo=dqn, env=env)
+shutil.rmtree("d3rlpy_data")
+shutil.rmtree("d3rlpy_logs")

@@ -1,12 +1,13 @@
 from abc import ABCMeta, abstractmethod
-from typing import Any, Dict, List
-from d3rlpy.metrics.scorer import (AlgoProtocol)
-from d3rlpy.dataset import Episode
+from typing import Any, Dict, List, Optional, Sequence
+from d3rlpy.interface import QLearningAlgoProtocol
+from d3rlpy.dataset import EpisodeBase
+from d3rlpy.metrics import EvaluatorProtocol
 
 class OPECallbackBase(metaclass=ABCMeta):
     
     @abstractmethod
-    def __call__(self, algo: AlgoProtocol, epoch, total_step):
+    def __call__(self, algo: QLearningAlgoProtocol,  epoch:int, total_step:int):
         pass
     
 class QueryCallbackBase(OPECallbackBase):
@@ -18,15 +19,13 @@ class QueryCallbackBase(OPECallbackBase):
         return self.cache[idx]
 
 
-class OPEEstimatorScorerBase(metaclass=ABCMeta):
+class OPEEstimatorScorerBase(EvaluatorProtocol):
     
-    def __init__(self, cache:OPECallbackBase) -> None:
+    def __init__(self, cache:OPECallbackBase, 
+                 episodes: Optional[Sequence[EpisodeBase]] = None
+                 ) -> None:
         self.cache = cache
-    
-    @abstractmethod
-    def __call__(self, algo: AlgoProtocol, episodes: List[Episode]):
-        pass
-
+        self._episodes = episodes
 
     
 # class WrapperAccessor:
@@ -46,6 +45,7 @@ class EpochCallbackHandler:
     def __init__(self, callbacks:List[OPECallbackBase]) -> None:
         self.__callbacks = callbacks
         
-    def __call__(self, algo, epoch, total_step) -> Any:
+    def __call__(self, algo:QLearningAlgoProtocol,  epoch:int, total_step:int
+                 ) -> Any:
         for i in self.__callbacks:
             i(algo, epoch, total_step)
