@@ -118,19 +118,24 @@ class ImportanceSampler(metaclass=ABCMeta):
     
     def update(self):
         self.traj_is_weights = self.get_traj_weight_array(
-            is_weights=self.is_weight_calc.is_weights
+            is_weights=self.is_weight_calc.is_weights,
+            weight_msk=self.is_weight_calc.weight_msk
         )
     
     def flush(self):
         self.traj_is_weights = None
     
     @abstractmethod
-    def get_traj_weight_array(self, is_weights:torch.Tensor)->torch.Tensor:
+    def get_traj_weight_array(
+        self, is_weights:torch.Tensor, weight_msk:torch.Tensor
+        )->torch.Tensor:
         """Performs additional calculations on the weights i.e. for per 
         decision. Weights are products up to the current timestep
 
         Args:
             is_weights (torch.Tensor): Tensor of dimension 
+                (# trajectories, max(traj_length))
+            weight_msk (torch.Tensor): Tensor of dimension 
                 (# trajectories, max(traj_length))
             
         Returns: 
@@ -142,17 +147,30 @@ class ImportanceSampler(metaclass=ABCMeta):
     
 class VanillaIS(ImportanceSampler):
         
-    def get_traj_weight_array(self, is_weights:torch.Tensor
-                              )->torch.Tensor:
+    def get_traj_weight_array(
+        self, 
+        is_weights:torch.Tensor, 
+        weight_msk:torch.Tensor
+        )->torch.Tensor:
         __orig_dim = is_weights.shape
-        is_weights = torch.prod(is_weights, dim=0, keepdim=True)
+        # Convert missing timesteps in trajectories from 0 to 1 otherwise prod
+        # will be 0 for trjectories without the max number of timesteps
+        is_weights[weight_msk==0] = 1
+        is_weights = torch.prod(is_weights, dim=1, keepdim=True)
         is_weights = is_weights.expand(__orig_dim)
+        # Convert missing timesteps in trajectories back to 0
+        is_weights = is_weights*weight_msk
         return is_weights
 
 class PerDecisionIS(ImportanceSampler):
     
-    def get_traj_weight_array(self, is_weights:torch.Tensor):
-        is_weights = torch.cumprod(is_weights, dim=0)
+    def get_traj_weight_array(
+        self, 
+        is_weights:torch.Tensor,
+        weight_msk:torch.Tensor
+        ):
+        is_weights = torch.cumprod(is_weights, dim=1)
+        is_weights = is_weights*weight_msk
         return is_weights
 
 

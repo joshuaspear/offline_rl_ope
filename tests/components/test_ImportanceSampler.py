@@ -2,6 +2,7 @@ import unittest
 import torch
 import logging
 import numpy as np
+import copy
 from offline_rl_ope.components.ImportanceSampler import (
     ImportanceSampler, VanillaIS, PerDecisionIS, ISWeightCalculator)
 from ..base import (test_action_probs, test_action_vals, test_eval_action_probs, 
@@ -150,39 +151,37 @@ class VanillaISTest(unittest.TestCase):
         self.is_sampler = VanillaIS(is_weight_calc=TestISWeightCalculator())
 
     def test_get_traj_weight_array(self):
-        tollerance_w = [abs(val.mean())/1000 
-                           for val in test_act_norm_conts]
-        for i,w in enumerate(test_act_indiv_weights):
-            w = torch.Tensor(w)
-            pred = self.is_sampler.get_traj_weight_array(
-                is_weights=w
+        test_act_norm_conts_w_m = copy.deepcopy(msk_test_res)
+        for i in range(len(test_act_norm_conts)):
+            test_act_norm_conts_w_m[i,:] = test_act_norm_conts_w_m[i,:]*test_act_norm_conts[i]
+
+        tollerance_w_m = abs(test_act_norm_conts_w_m.numpy().mean())/1000
+        test_act_norm_conts_w_m = torch.tensor(test_act_norm_conts_w_m)
+        pred = self.is_sampler.get_traj_weight_array(
+                is_weights=weight_test_res, 
+                weight_msk=msk_test_res
             )
-            #self.assertTrue(isinstance(pred, np.array))
-            self.assertEqual(pred.shape, torch.Size([w.shape[0]]))
-            np.testing.assert_allclose(
-                pred, test_act_norm_conts[i], atol=tollerance_w[i]
-            )                
+        
+        self.assertEqual(pred.shape, test_act_norm_conts_w_m.shape)
+        np.testing.assert_allclose(
+            pred, test_act_norm_conts_w_m, atol=tollerance_w_m
+        )                
                 
 class PerDecisionISTest(unittest.TestCase):
     def setUp(self) -> None:
         self.is_sampler = PerDecisionIS(is_weight_calc=TestISWeightCalculator())
 
     def test_get_traj_weight_array(self):
-        tollerance_w = [abs(val.mean())/1000 
-                           for val in test_act_pd_weights]
-        for i,w in enumerate(test_act_indiv_weights):
-            w = torch.Tensor(w)
-            pred = self.is_sampler.get_traj_weight_array(
-                is_weights=w
+        test_act_norm_conts_w_m = copy.deepcopy(msk_test_res)
+        for i in range(len(test_act_pd_weights)):
+            test_act_norm_conts_w_m[i,0:len(test_act_pd_weights[i])] = torch.tensor(test_act_pd_weights[i])
+            
+        tollerance_w_m = abs(test_act_norm_conts_w_m.numpy().mean())/1000
+        pred = self.is_sampler.get_traj_weight_array(
+                is_weights=weight_test_res, 
+                weight_msk=msk_test_res
             )
-            #self.assertEqual(pred.shape, torch.Size([3]))
-            res = pred==test_act_pd_weights[i]
-            if not res:
-                logger.debug("pred: {}".format(pred))
-                logger.debug("test_act_pd_weights[i]: {}".format(
-                    test_act_pd_weights[i]))
-                diff_res = pred-test_act_pd_weights[i]
-                diff_res = (diff_res < tollerance_w[i]).all()
-                self.assertTrue(diff_res)
-            else:
-                self.assertTrue(res)
+        self.assertEqual(pred.shape, test_act_norm_conts_w_m.shape)
+        np.testing.assert_allclose(
+            pred, test_act_norm_conts_w_m, atol=tollerance_w_m
+        )
