@@ -1,5 +1,5 @@
 from abc import ABCMeta, abstractmethod
-from d3rlpy.algos.base import AlgoBase
+from d3rlpy.algos import QLearningAlgoBase
 from typing import Callable
 import torch
 
@@ -19,14 +19,17 @@ class DirectMethodBase(metaclass=ABCMeta):
     
 class D3rlpyQlearnDM(DirectMethodBase):
     
-    def __init__(self, model:AlgoBase) -> None:
+    def __init__(self, model:QLearningAlgoBase) -> None:
         super().__init__(model=model)
     
     def get_q(self, state:torch.Tensor, action:torch.Tensor):
-        values = torch.Tensor(self.model.predict_value(x=state, action=action))
+        values = torch.tensor(self.model.predict_value(
+            x=state.numpy(), action=action.numpy()))
         return values
         
     def get_v(self, state:torch.Tensor):
+        state = state.numpy()
         actions = self.model.predict(state)
-        values = torch.Tensor(self.model.predict_value(state, actions))
+        values = torch.tensor(self.model.predict_value(
+            x=state, action=actions))
         return values

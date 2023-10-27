@@ -1,14 +1,14 @@
-from d3rlpy.algos import DQN
+from d3rlpy.algos import DQNConfig
 import pickle
 from d3rlpy.datasets import get_cartpole
 import numpy as np
 from sklearn.multioutput import MultiOutputClassifier
 from sklearn.multiclass import OneVsRestClassifier
-from d3rlpy.ope import DiscreteFQE
-from d3rlpy.metrics.scorer import (soft_opc_scorer, 
-    initial_state_value_estimation_scorer)
+from d3rlpy.ope import DiscreteFQE, FQEConfig
+from d3rlpy.metrics import (SoftOPCEvaluator, 
+                            InitialStateValueEstimationEvaluator)
+from d3rlpy.dataset import BasicTransitionPicker
 from xgboost import XGBClassifier
-import math
 import torch
 
 from offline_rl_ope.Dataset import ISEpisode
@@ -25,7 +25,7 @@ dataset, env = get_cartpole()
 
 # setup algorithm
 gamma = 0.99
-dqn = DQN(gamma=gamma, target_update_interval=100)
+dqn = DQNConfig(gamma=gamma, target_update_interval=100).create()
 
 unique_pol_acts = np.arange(0,env.action_space.n)
 
@@ -54,25 +54,46 @@ behav_est = MultiOutputClassifier(OneVsRestClassifier(XGBClassifier(
     objective="binary:logistic")))
 
 # Fit the behaviour model
-behav_est.fit(X=dataset.observations, Y=dataset.actions.reshape(-1,1))
+observations = []
+actions = []
+tp = BasicTransitionPicker()
+for ep in dataset.episodes:
+    for i in range(ep.transition_count):
+        _transition = tp(ep,i)
+        observations.append(_transition.observation.reshape(1,-1))
+        actions.append(_transition.action)
+
+observations = np.concatenate(observations)
+actions = np.concatenate(actions)
+
+behav_est.fit(X=observations, Y=actions.reshape(-1,1))
 
 gbt_est = GbtEst(estimator=behav_est)
 gbt_policy_be = BehavPolicy(policy_class=gbt_est, collect_res=False)
 
-dqn.fit(dataset.episodes, n_epochs=1)
+no_obs_steps = int(len(actions)*0.025)
+n_epochs=1
+n_steps_per_epoch = no_obs_steps
+n_steps = no_obs_steps*n_epochs
+dqn.fit(dataset, n_steps=n_steps, n_steps_per_epoch=n_steps_per_epoch, 
+        with_timestamp=False)
 
 fqe_scorers = {
-    "soft_opc": soft_opc_scorer(70), 
-    "init_state_val": initial_state_value_estimation_scorer
+    "soft_opc": SoftOPCEvaluator(
+        return_threshold=70,
+        episodes=dataset.episodes
+        ),
+    "init_state_val": InitialStateValueEstimationEvaluator(
+        episodes=dataset.episodes
+    )
 }
 
-fqe_init_kwargs = {"use_gpu": False, "discrete_action": True, 
-                   "q_func_factory": 'mean', "learning_rate": 1e-4
-                  }
-discrete_fqe = DiscreteFQE(algo=dqn, **fqe_init_kwargs)
 
-discrete_fqe.fit(dataset.episodes, eval_episodes=dataset.episodes, 
-                    scorers=fqe_scorers, n_epochs=1)            
+fqe_config = FQEConfig(learning_rate=1e-4)
+#discrete_fqe = DiscreteFQE(algo=dqn, **fqe_init_kwargs)
+discrete_fqe = DiscreteFQE(algo=dqn, config=fqe_config, device=False)
+
+discrete_fqe.fit(dataset, evaluators=fqe_scorers, n_steps=no_obs_steps)            
 
      
 # Static OPE evaluation 
