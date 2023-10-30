@@ -12,6 +12,8 @@ from ..base import (test_action_probs, test_action_vals, test_eval_action_probs,
 logger = logging.getLogger("offline_rl_ope")
 
 
+eps = 0.001
+
 class D3RlPyDeterministicTest(unittest.TestCase):
 
     def setUp(self) -> None:
@@ -22,9 +24,11 @@ class D3RlPyDeterministicTest(unittest.TestCase):
                 }
             return lkp[str(x)]
         policy_class = MagicMock(side_effect=__mock_return)
-        self.policy = D3RlPyDeterministic(policy_class, gpu=False)
+        self.policy_0_eps = D3RlPyDeterministic(policy_class, gpu=False)
+        self.policy_001_eps = D3RlPyDeterministic(
+            policy_class, gpu=False, eps=eps)
     
-    def test___call__(self):
+    def test___call__0_eps(self):
         test_pred = []
         __test_action_vals = [np.array(i) for i in test_action_vals]
         __test_eval_action_vals = [np.array(i) for i in test_eval_action_vals]
@@ -35,7 +39,27 @@ class D3RlPyDeterministicTest(unittest.TestCase):
         for s,a in zip(test_state_vals, test_action_vals):
             s = torch.Tensor(s)
             a = torch.Tensor(a)
-            pred = self.policy(state=s, action=a)
+            pred = self.policy_0_eps(state=s, action=a)
+            self.assertEqual(pred.shape, torch.Size((s.shape[0],1)))
+            test_pred.append(pred.squeeze().numpy())
+        test_pred = np.concatenate(test_pred)
+        np.testing.assert_allclose(test_pred, test_res, atol=tollerance)
+        
+    def test___call__0001_eps(self):
+        test_pred = []
+        __test_action_vals = [np.array(i) for i in test_action_vals]
+        __test_eval_action_vals = [np.array(i) for i in test_eval_action_vals]
+        test_res = [(x==y).astype(int) 
+               for x,y in zip(__test_action_vals, __test_eval_action_vals)]
+        test_res = np.concatenate(test_res).squeeze()
+        test_res = np.where(
+            test_res == 1, 1-eps, 0+eps
+        )
+        tollerance = test_res.mean()/1000    
+        for s,a in zip(test_state_vals, test_action_vals):
+            s = torch.Tensor(s)
+            a = torch.Tensor(a)
+            pred = self.policy_001_eps(state=s, action=a)
             self.assertEqual(pred.shape, torch.Size((s.shape[0],1)))
             test_pred.append(pred.squeeze().numpy())
         test_pred = np.concatenate(test_pred)
