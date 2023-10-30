@@ -24,7 +24,7 @@ setuptools.setup(
     license='MIT',
     classifiers=[],
     package_dir={"": "src"},
-    python_requires=">=3.11",
+    python_requires=">=3.10",
     install_requires=[
         "d3rlpy>=2.0.4" 
         ],
