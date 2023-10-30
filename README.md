@@ -1,6 +1,7 @@
 # offline_rl_ope (BETA RELEASE)
 
 **WARNING: Weighted importance sampling was incorrectly implemented in versions 1.X.X and 2.1.X, 2.2.X**
+**WARNING: Unit testing currently only running in Python 3.11. 3.10 will be supported in the future**
 
 **IMPORTANT: THIS IS A BETA RELEASE. FUNCTIONALITY IS STILL BEING TESTED** Feedback/contributions are welcome :) 
 
@@ -81,6 +82,8 @@ If importance sampling based methods are evaluating to 0, consider visualising t
 The different kinds of importance samples can also be visualised by querying the ```traj_is_weights``` attribute of a given ```ImportanceSampler``` object. If for example, vanilla importance sampling is being used and the samples are not ```NaN``` or ```Inf``` then visualising the ```traj_is_weights``` may provide insight as to whether a weighted or per decision version of the calculation should be used.  
 
 ### Release log
+#### 3.0.3 
+* 3.10 support
 #### 3.0.2 
 * PyPI release!
 * Fixed bug in VanillaIS calculation where trajectories with less than the max number of samples were always being evaluated to 0
