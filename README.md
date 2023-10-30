@@ -72,7 +72,19 @@ Basic unit testing has been implemented for all the core functionality of the pa
 * Continuous action spaces
 
 
+### Tips
+#### Debugging importance ratios
+If importance sampling based methods are evaluating to 0, consider visualising the importance ratios at different stages. All IS based estimators require an object of types ```ISWeightCalculator``` to be defined (this could be a ```ISWeightCalculator``` object or a subclass e.g., ```ISWeightOrchestrator```). In any case, visualising the ```is_weights``` attribute of this object will provide insight regarding the course of NaN's.
+* ```NaN``` values occur when the behaviour policy and evaluation policy have probability 0. In both cases a small epsilon value could be used in place of probability 0. For deterministic evaluation policies, this is automatically included ```D3RlPyDeterministic```.
+* ```Inf``` values can occur when the probability under the evaluation policy is greater than 0 whilst the behaviour policu probability is 0.
+
+The different kinds of importance samples can also be visualised by querying the ```traj_is_weights``` attribute of a given ```ImportanceSampler``` object. If for example, vanilla importance sampling is being used and the samples are not ```NaN``` or ```Inf``` then visualising the ```traj_is_weights``` may provide insight as to whether a weighted or per decision version of the calculation should be used.  
+
 ### Release log
+#### 3.0.2 
+* PyPI release!
+* Fixed bug in VanillaIS calculation where trajectories with less than the max number of samples were always being evaluated to 0
+* Epsilon smoothing for deterministic evaluation policies
 #### 3.0.1 
 * Updated d3rlpy API to align with the 2.x release!
 #### 2.3.0
