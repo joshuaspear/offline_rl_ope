@@ -58,8 +58,8 @@ Basic unit testing has been implemented for all the core functionality of the pa
 
 
 ### Installation
-* This library is not currently available on pypi however, a version will be released soon.
-* To install, clone/download the repository. Navtigate to the repository and run "pip install -e ."
+* PyPi: https://pypi.org/project/offline-rl-ope/
+* To install from sourse using pip, clone this repository and run ```pip install .``` in the top level of the repo.
 
 ### Future work
 * Async/multithread support
@@ -79,7 +79,7 @@ If importance sampling based methods are evaluating to 0, consider visualising t
 * ```NaN``` values occur when the behaviour policy and evaluation policy have probability 0. In both cases a small epsilon value could be used in place of probability 0. For deterministic evaluation policies, this is automatically included ```D3RlPyDeterministic```.
 * ```Inf``` values can occur when the probability under the evaluation policy is greater than 0 whilst the behaviour policu probability is 0.
 
-The different kinds of importance samples can also be visualised by querying the ```traj_is_weights``` attribute of a given ```ImportanceSampler``` object. If for example, vanilla importance sampling is being used and the samples are not ```NaN``` or ```Inf``` then visualising the ```traj_is_weights``` may provide insight as to whether a weighted or per decision version of the calculation should be used.  
+The different kinds of importance samples can also be visualised by querying the ```traj_is_weights``` attribute of a given ```ImportanceSampler``` object. If for example, vanilla importance sampling is being used and the samples are not ```NaN``` or ```Inf``` then visualising the ```traj_is_weights``` may provide insight. In particular, IS weights will tend to inifinity when the evaluation policy places large density on an action in comparison to the behaviour policy.
 
 ### Release log
 #### 3.0.3 
