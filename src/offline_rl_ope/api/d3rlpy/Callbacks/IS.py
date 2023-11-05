@@ -13,7 +13,7 @@ from .base import OPECallbackBase
 logger = logging.getLogger("offline_rl_ope")
 
 __all__ = [
-    "ISCallback"
+    "ISCallback", "D3RlPyTorchAlgoPredict"
     ]
 
 
