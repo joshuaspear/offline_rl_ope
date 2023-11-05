@@ -6,7 +6,7 @@ from d3rlpy.metrics.evaluators import make_batches, WINDOW_SIZE
 from d3rlpy.interface import QLearningAlgoProtocol
 from d3rlpy.dataset import ReplayBuffer
 
-from .base import QueryCallbackBase
+from .base import QueryCallbackBase, OPECallbackBase
 
 __all__ = [
     "DiscreteValueByActionCallback", "EpochCallbackHandler"
