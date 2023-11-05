@@ -54,6 +54,6 @@ class EpochCallbackHandler(OPECallbackBase):
         self.__callbacks = callbacks
         
     def __call__(self, algo:QLearningAlgoProtocol,  epoch:int, total_step:int
-                 ) -> Any:
+                 ) -> None:
         for i in self.__callbacks:
             i(algo, epoch, total_step)
