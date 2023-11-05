@@ -1,2 +1,2 @@
-from .ISScorer import *
+from .IS import *
 from .Misc import *
