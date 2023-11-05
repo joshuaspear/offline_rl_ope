@@ -18,7 +18,7 @@ from offline_rl_ope.OPEEstimators import (
     ISEstimator, DREstimator, D3rlpyQlearnDM)
 from offline_rl_ope.LowerBounds.HCOPE import get_lower_bound
 
-from offline_rl_ope.api.d3rlpy.ISScorer import D3RlPyTorchAlgoPredict
+from offline_rl_ope.api.d3rlpy.Scorers.ISScorer import D3RlPyTorchAlgoPredict
 
 # obtain dataset
 dataset, env = get_cartpole()

@@ -1,59 +1,22 @@
 import logging
 import torch
-from typing import Any, Dict, List, Callable, Sequence, Optional
+from typing import Any, Dict, Sequence, Optional
 from d3rlpy.interface import QLearningAlgoProtocol
 from d3rlpy.dataset import EpisodeBase
 from d3rlpy.metrics import EvaluatorProtocol
 from d3rlpy.dataset import ReplayBuffer
 
-from ...components.Policy import Policy, D3RlPyDeterministic
-from ...components.ImportanceSampler import ISWeightOrchestrator
-from ...OPEEstimators import ISEstimator
-from .utils import OPECallbackBase, OPEEstimatorScorerBase
+from ....OPEEstimators import ISEstimator
+from .base import OPEEstimatorScorerBase
+from ..Callbacks.IS import ISCallback
 
 logger = logging.getLogger("offline_rl_ope")
 
-class D3RlPyTorchAlgoPredict:
-    
-    def __init__(self, predict_func:Callable):
-        self.predict_func = predict_func
-        
-    def __call__(self, x:torch.Tensor):
-        pred = self.predict_func(x.cpu().numpy())
-        return torch.Tensor(pred)
-    
+__all__ = [
+    "ISEstimatorScorer", "ISDiscreteActionDistScorer"
+    ]
 
-class ISCallback(ISWeightOrchestrator, OPECallbackBase):
-    """Wrapper class for performing importance sampling
-    """
-    def __init__(self, is_types:List[str], behav_policy: Policy, 
-                 episodes: Sequence[EpisodeBase], gpu:bool=False, 
-                 collect_act:bool=False
-                 ) -> None:
-        OPECallbackBase.__init__(self)
-        ISWeightOrchestrator.__init__(self, *is_types, 
-                                      behav_policy=behav_policy)
-        self.states:List[torch.Tensor] = []
-        self.actions:List[torch.Tensor] = []
-        self.rewards:List[torch.Tensor] = []
-        for traj in episodes:
-            self.states.append(torch.Tensor(traj.observations))
-            self.actions.append(torch.Tensor(traj.actions).view(-1,1))
-            self.rewards.append(torch.Tensor(traj.rewards))
-        self.gpu = gpu
-        self.collect_act = collect_act
-        
-    def __call__(self, algo: QLearningAlgoProtocol, epoch:int, total_step:int
-                 ) -> Dict:
-        policy_class = D3RlPyTorchAlgoPredict(
-            predict_func=algo.predict)
-        eval_policy = D3RlPyDeterministic(policy_class=policy_class, 
-                                          collect_res=False, 
-                                          collect_act=self.collect_act,
-                                          gpu=self.gpu)
-        self.update(states=self.states, actions=self.actions, 
-                    eval_policy=eval_policy)
-        
+
 class ISEstimatorScorer(OPEEstimatorScorerBase, ISEstimator):
     
     def __init__(self, discount, cache:ISCallback, is_type:str, 

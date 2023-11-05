@@ -1,29 +1,16 @@
-from typing import List, Sequence, Optional, cast
-import logging
+from typing import List, cast
 import numpy as np
 import pandas as pd
 
 from d3rlpy.metrics.evaluators import make_batches, WINDOW_SIZE
 from d3rlpy.interface import QLearningAlgoProtocol
-from d3rlpy.dataset import EpisodeBase, ReplayBuffer
+from d3rlpy.dataset import ReplayBuffer
 
-from .utils import OPEEstimatorScorerBase, QueryCallbackBase
+from .base import QueryCallbackBase
 
-logger = logging.getLogger("offline_rl_ope")
-
-
-class QueryScorer(OPEEstimatorScorerBase):
-    
-    def __init__(self, cache: QueryCallbackBase, query_key:str, 
-                 episodes: Optional[Sequence[EpisodeBase]] = None
-                 ) -> None:
-        super().__init__(cache=cache, episodes=episodes)
-        self.query_key = query_key
-        
-    def __call__(self, algo: QLearningAlgoProtocol, dataset: ReplayBuffer
-                 ) -> float:
-        return self.cache[self.query_key]
-
+__all__ = [
+    "DiscreteValueByActionCallback", "EpochCallbackHandler"
+    ]
 
 class DiscreteValueByActionCallback(QueryCallbackBase):
     """Callback class for calculating the on-policy average value estimates, 
@@ -58,3 +45,15 @@ class DiscreteValueByActionCallback(QueryCallbackBase):
             for key in self.unique_action_vals
             }
         self.cache = res_dict
+        
+        
+class EpochCallbackHandler(OPECallbackBase):
+    """Helper class for executing multiple wrapper objectes with a single calls
+    """
+    def __init__(self, callbacks:List[OPECallbackBase]) -> None:
+        self.__callbacks = callbacks
+        
+    def __call__(self, algo:QLearningAlgoProtocol,  epoch:int, total_step:int
+                 ) -> Any:
+        for i in self.__callbacks:
+            i(algo, epoch, total_step)

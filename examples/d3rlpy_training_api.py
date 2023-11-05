@@ -13,8 +13,12 @@ from xgboost import XGBClassifier
 import shutil
 
 from offline_rl_ope.api.d3rlpy import (
-    ISCallback, FQECallback, ISEstimatorScorer, EpochCallbackHandler, 
-    QueryScorer, ISDiscreteActionDistScorer, DiscreteValueByActionCallback)
+    # Import callbacks
+    ISCallback, FQECallback, EpochCallbackHandler, 
+    DiscreteValueByActionCallback, 
+    # Import evaluators
+    ISEstimatorScorer, ISDiscreteActionDistScorer, QueryScorer
+    )
 from offline_rl_ope.components.Policy import BehavPolicy
 
 # obtain dataset
@@ -72,6 +76,8 @@ gbt_policy_be = BehavPolicy(policy_class=gbt_est, collect_res=False)
 is_callback = ISCallback(is_types=["vanilla", "per_decision"], 
                          behav_policy=gbt_policy_be, episodes=dataset.episodes, 
                          gpu=False, collect_act=True)
+
+
 
 fqe_scorers = {
     "soft_opc": SoftOPCEvaluator(70), 

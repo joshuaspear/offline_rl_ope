@@ -9,9 +9,14 @@ from d3rlpy.base import DeviceArg
 from d3rlpy.logging import FileAdapterFactory
 from d3rlpy.envs import GymEnv
 
-from .utils import QueryCallbackBase
+from .base import QueryCallbackBase
 
 FQEImplInitArg = Union[GymEnv, Tuple[Shape, int]]
+
+__all__ = [
+    "FQECallback"
+    ]
+
 
 class FQECallback(QueryCallbackBase):
     """ Scorer class for performing Fitted Q Evaluation
@@ -22,6 +27,7 @@ class FQECallback(QueryCallbackBase):
                  model_fit_kwargs:Dict, dataset:MDPDataset, 
                  fqe_impl_init:FQEImplInitArg=None, device:DeviceArg = False
                  ) -> None:
+        super().__init__(debug_path=None)
         self.__scorers = scorers
         self.__dataset = dataset
         self.__fqe_cls = fqe_cls
@@ -32,8 +38,16 @@ class FQECallback(QueryCallbackBase):
         os.mkdir(self.__logs_loc)
         self.__fqe_impl_init = fqe_impl_init
         self.__device = device
+        
+    def debug_true(
+        self,
+        algo: QLearningAlgoProtocol, 
+        epoch:int, 
+        total_step:int
+        ):
+        pass
             
-    def __call__(self, algo: QLearningAlgoProtocol, epoch:int, total_step:int):
+    def run(self, algo: QLearningAlgoProtocol, epoch:int, total_step:int):
         fqe_config = FQEConfig(**self.__model_init_kwargs)
         fqe = self.__fqe_cls(algo=algo, config=fqe_config, device=self.__device)
         if self.__fqe_impl_init is not None:
