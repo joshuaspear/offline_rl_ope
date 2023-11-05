@@ -35,8 +35,8 @@ class ISCallback(ISWeightOrchestrator, OPECallbackBase):
         is_types:List[str], 
         behav_policy: Policy, 
         dataset: ReplayBuffer, 
+        eval_policy_kwargs:Dict[str,Any] = {},
         debug_path:str=None, 
-        eval_policy_kwargs=Dict[str,Any] 
         ) -> None:
         OPECallbackBase.__init__(self, debug_path=debug_path)
         ISWeightOrchestrator.__init__(self, *is_types, 
