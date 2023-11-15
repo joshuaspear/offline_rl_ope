@@ -92,11 +92,11 @@ class ISEstimator(ISEstimatorBase):
             torch.Tensor: tensor of size (# trajectories,) defining the 
             individual trajectory rewards
         """
-        h:int = weights.shape[1]
+        h = weights.shape[1]
         discnt_rewards = self.get_dataset_discnt_reward(
             rewards=rewards, discount=discount, h=h)
         weights = self.process_weights(weights=weights, is_msk=is_msk)
-        res:torch.Tensor = torch.mul(discnt_rewards, weights).sum(axis=1)
+        res = torch.mul(discnt_rewards, weights).sum(axis=1)
         return res
     
     

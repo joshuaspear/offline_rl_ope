@@ -46,9 +46,12 @@ class ISCallback(ISWeightOrchestrator, OPECallbackBase):
         self.rewards:List[torch.Tensor] = []
         for traj in dataset.episodes:
             self.states.append(torch.Tensor(traj.observations))
-            self.actions.append(torch.Tensor(traj.actions).view(-1,1))
+            self.actions.append(torch.Tensor(traj.actions))
             self.rewards.append(torch.Tensor(traj.rewards))
         self.eval_policy_kwargs = eval_policy_kwargs
+        assert len(self.states[0].shape) == 2
+        assert len(self.actions[0].shape) == 2
+        assert self.rewards[0].shape[1] == 1
 
     def debug_true(
         self, 
@@ -67,10 +70,10 @@ class ISCallback(ISWeightOrchestrator, OPECallbackBase):
         epoch:int, 
         total_step:int
         ) -> None:
-        policy_class = D3RlPyTorchAlgoPredict(
+        policy_func = D3RlPyTorchAlgoPredict(
             predict_func=algo.predict)
         eval_policy = D3RlPyDeterministic(
-            policy_class=policy_class, 
+            policy_func=policy_func, 
             **self.eval_policy_kwargs
             )
         self.update(states=self.states, actions=self.actions, 

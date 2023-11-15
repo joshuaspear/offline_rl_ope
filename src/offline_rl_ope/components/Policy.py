@@ -5,9 +5,9 @@ from typing import Callable, List
 
 class Policy(metaclass=ABCMeta):
     
-    def __init__(self, policy_class:Callable, collect_res:bool=False, 
+    def __init__(self, policy_func:Callable, collect_res:bool=False, 
                  collect_act:bool=False) -> None:
-        self.policy_class = policy_class
+        self.policy_func = policy_func
         self.policy_predictions = []
         self.policy_actions = []
         if collect_res:
@@ -49,16 +49,16 @@ class Policy(metaclass=ABCMeta):
 
 class BehavPolicy(Policy):
     
-    def __init__(self, policy_class, collect_res:bool=False, 
+    def __init__(self, policy_func, collect_res:bool=False, 
                  collect_act:bool=False) -> None:
-        super().__init__(policy_class, collect_res=collect_res, 
+        super().__init__(policy_func, collect_res=collect_res, 
                          collect_act=collect_act)
         
     def __call__(self, state: torch.Tensor, action: torch.Tensor):
         state = state.detach().numpy()
         action = action.detach().numpy()
         pre_dim = state.shape[0]
-        res = self.policy_class.eval_pdf(dep_vals=action, indep_vals=state)
+        res = self.policy_func(y=action, x=state)
         res = torch.Tensor(res)
         res = res.view(pre_dim, -1)
         self.collect_res_fn(res)
@@ -68,10 +68,10 @@ class BehavPolicy(Policy):
 class D3RlPyDeterministic(Policy):
     
     def __init__(
-        self, policy_class: Callable, collect_res:bool=False, 
+        self, policy_func: Callable, collect_res:bool=False, 
         collect_act:bool=False, gpu:bool=True, eps:float=0
         ) -> None:
-        super().__init__(policy_class, collect_res=collect_res, 
+        super().__init__(policy_func, collect_res=collect_res, 
                          collect_act=collect_act)
         if gpu:
             self.__preproc_tens = lambda x: x.to("cuda")
@@ -84,7 +84,7 @@ class D3RlPyDeterministic(Policy):
     
     def __call__(self, state: torch.Tensor, action: torch.Tensor)->torch.Tensor:
         state = self.__preproc_tens(state)
-        greedy_action = self.policy_class(x=state).view(-1,1)
+        greedy_action = self.policy_func(x=state).view(-1,1)
         greedy_action = self.__postproc_tens(greedy_action)
         self.collect_act_func(greedy_action)
         res = (greedy_action == action).all(dim=1, keepdim=True).int()
@@ -96,11 +96,11 @@ class D3RlPyDeterministic(Policy):
     
 class LinearMixedPolicy:
     
-    def __init__(self, policy_classes:List[Policy], 
+    def __init__(self, policy_funcs:List[Policy], 
                  mixing_params:torch.Tensor) -> None:
         if sum(mixing_params) != 1:
             raise Exception("Mixing params must equal 1")
-        self.__policy_classes = policy_classes
+        self.__policy_funcs = policy_funcs
         self.__mixing_params = mixing_params
         self.__policy_predictions = []
     
@@ -110,8 +110,8 @@ class LinearMixedPolicy:
         
     def __call__(self, state: torch.Tensor, action: torch.Tensor):
         res = []
-        for pol in self.__policy_classes:
-            pol_out = pol(state=state, action=action)
+        for pol in self.__policy_funcs:
+            pol_out = pol(x=state, y=action)
             res.append(pol_out)
         res = torch.cat(res, dim=1)
         self.__policy_predictions.append(res)

@@ -81,7 +81,6 @@ class BehavPolicyTest(unittest.TestCase):
                     test_state_vals, test_action_vals, 
                     test_action_probs)
                 }
-            print(lkp)
             return lkp["_".join([str(indep_vals),str(dep_vals)])]
         policy_class = MockPolicyClass()
         policy_class.eval_pdf = MagicMock(side_effect=__mock_return)

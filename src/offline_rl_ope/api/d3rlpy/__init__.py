@@ -1,2 +1,1 @@
-from .Callbacks import *
-from .Scorers import *
+from . import Scorers, Callbacks

@@ -4,7 +4,7 @@ import os
 from ._version import __version__
 
 from . import (
-    OPEEstimators, api, LowerBounds, components
+    OPEEstimators, api, LowerBounds, components, PropensityModels
 )
 
 logging_name = "offline_rl_ope"

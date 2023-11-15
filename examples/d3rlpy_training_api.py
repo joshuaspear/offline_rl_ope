@@ -12,11 +12,15 @@ from sklearn.multiclass import OneVsRestClassifier
 from xgboost import XGBClassifier
 import shutil
 
-from offline_rl_ope.api.d3rlpy import (
-    # Import callbacks
+# Import callbacks
+from offline_rl_ope.api.d3rlpy.Callbacks import (
+    
     ISCallback, FQECallback, EpochCallbackHandler, 
-    DiscreteValueByActionCallback, 
-    # Import evaluators
+    DiscreteValueByActionCallback
+    )
+
+# Import evaluators
+from offline_rl_ope.api.d3rlpy.Scorers import (
     ISEstimatorScorer, ISDiscreteActionDistScorer, QueryScorer
     )
 from offline_rl_ope.components.Policy import BehavPolicy
@@ -73,11 +77,15 @@ gbt_est = GbtEst(estimator=behav_est)
 gbt_policy_be = BehavPolicy(policy_class=gbt_est, collect_res=False)
 
 
-is_callback = ISCallback(is_types=["vanilla", "per_decision"], 
-                         behav_policy=gbt_policy_be, episodes=dataset.episodes, 
-                         gpu=False, collect_act=True)
-
-
+is_callback = ISCallback(
+    is_types=["vanilla", "per_decision"], 
+    behav_policy=gbt_policy_be, 
+    dataset=dataset,
+    eval_policy_kwargs={
+        "gpu": False, 
+        "collect_act": True   
+    }
+    )
 
 fqe_scorers = {
     "soft_opc": SoftOPCEvaluator(70), 

@@ -17,13 +17,24 @@ class DiscreteValueByActionCallback(QueryCallbackBase):
     split by action.
     """
     
-    def __init__(self, unique_action_vals:List, dataset: ReplayBuffer) -> None:
-        super().__init__()
+    def __init__(
+        self, 
+        unique_action_vals:List, 
+        dataset: ReplayBuffer,
+        ) -> None:
+        super().__init__(debug_path=None)
         self.unique_action_vals = unique_action_vals
         self.dataset = dataset
         
+    def debug_true(
+        self, 
+        algo: QLearningAlgoProtocol, 
+        epoch: int, 
+        total_step: int
+        ) -> None:
+        pass
     
-    def __call__(self, algo: QLearningAlgoProtocol, epoch:int, total_step:int):
+    def run(self, algo: QLearningAlgoProtocol, epoch:int, total_step:int):
         total_values = []
         total_actions = []
         for episode in self.dataset.episodes:
@@ -47,7 +58,7 @@ class DiscreteValueByActionCallback(QueryCallbackBase):
         self.cache = res_dict
         
         
-class EpochCallbackHandler(OPECallbackBase):
+class EpochCallbackHandler:
     """Helper class for executing multiple wrapper objectes with a single calls
     """
     def __init__(self, callbacks:List[OPECallbackBase]) -> None:

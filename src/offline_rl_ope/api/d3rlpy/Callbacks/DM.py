@@ -1,16 +1,19 @@
-from typing import Callable, Dict, Union, Tuple
+from typing import Any, Callable, Dict, Union, Tuple, Sequence
 import shutil
 import os
 import numpy as np
 from d3rlpy.ope.fqe import FQEConfig, FQE, DiscreteFQE
-from d3rlpy.dataset import MDPDataset, Shape
+from d3rlpy.dataset import MDPDataset
 from d3rlpy.interface import QLearningAlgoProtocol
 from d3rlpy.base import DeviceArg
 from d3rlpy.logging import FileAdapterFactory
-from d3rlpy.envs import GymEnv
+import gym
+import gymnasium
 
 from .base import QueryCallbackBase
 
+Shape = Union[Sequence[int], Sequence[Sequence[int]]]
+GymEnv = Union[gym.Env[Any, Any], gymnasium.Env[Any, Any]]
 FQEImplInitArg = Union[GymEnv, Tuple[Shape, int]]
 
 __all__ = [
