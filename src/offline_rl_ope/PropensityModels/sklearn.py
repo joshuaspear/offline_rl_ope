@@ -97,3 +97,11 @@ class MultiOutputMultiClassTrainer(PropensityTrainer):
     def save(self, path:str) -> None:
         with open(path, "wb") as f:
             pickle.dump(self, f)
+    
+    @property
+    def fitted_cls(self):
+        return self.__fitted_cls
+    
+    @fitted_cls.setter
+    def fitted_cls(self, val):
+        self.__fitted_cls = val
