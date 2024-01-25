@@ -73,7 +73,7 @@ class MockPolicyClass:
 class BehavPolicyTest(unittest.TestCase):
     
     def setUp(self) -> None:
-        def __mock_return(dep_vals, indep_vals):
+        def __mock_return(y, x):
             lkp = {
                 "_".join([str(np.array(state).astype(float)),
                           str(np.array(act).astype(float))]): np.array(probs) 
@@ -81,10 +81,12 @@ class BehavPolicyTest(unittest.TestCase):
                     test_state_vals, test_action_vals, 
                     test_action_probs)
                 }
-            return lkp["_".join([str(indep_vals),str(dep_vals)])]
-        policy_class = MockPolicyClass()
-        policy_class.eval_pdf = MagicMock(side_effect=__mock_return)
-        self.policy = BehavPolicy(policy_class)
+            return lkp["_".join([str(x),str(y)])]
+        #policy_class = MockPolicyClass()
+        #policy_class.__call__ = MagicMock(side_effect=__mock_return)
+        #self.policy = BehavPolicy(policy_class)
+        self.policy = BehavPolicy(
+            policy_func=MagicMock(side_effect=__mock_return))
 
     
     def test___call__(self):

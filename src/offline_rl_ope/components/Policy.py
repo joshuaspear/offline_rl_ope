@@ -49,7 +49,7 @@ class Policy(metaclass=ABCMeta):
 
 class BehavPolicy(Policy):
     
-    def __init__(self, policy_func, collect_res:bool=False, 
+    def __init__(self, policy_func:Callable, collect_res:bool=False, 
                  collect_act:bool=False) -> None:
         super().__init__(policy_func, collect_res=collect_res, 
                          collect_act=collect_act)
