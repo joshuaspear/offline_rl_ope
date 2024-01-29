@@ -40,9 +40,9 @@ class WISNormWeights(WeightNorm):
             torch.Tensor: Tensor of dimension (# trajectories, 1) defining the 
             normalisation value for each timestep
         """
-        denom:torch.Tensor = traj_is_weights.sum(axis=0, keepdim=True)
+        denom:torch.Tensor = traj_is_weights.sum(dim=0, keepdim=True)
         denom = (denom+self.smooth_eps)/(
-            is_msk.sum(axis=0, keepdim=True)+self.smooth_eps)
+            is_msk.sum(dim=0, keepdim=True)+self.smooth_eps)
         return denom
     
     def __call__(self, traj_is_weights:torch.Tensor, is_msk:torch.Tensor
@@ -88,7 +88,10 @@ class NormWeightsPass(WeightNorm):
         """
         return traj_is_weights
 
-def clip_weights(traj_is_weights:torch.Tensor, clip:float)->torch.Tensor:
+def clip_weights(
+    traj_is_weights:torch.Tensor, 
+    clip:float
+    )->torch.Tensor:
     """Clips propensity weights according to the value provided in clip
 
     Args:
@@ -105,7 +108,10 @@ def clip_weights(traj_is_weights:torch.Tensor, clip:float)->torch.Tensor:
     res = traj_is_weights.clamp(min=1/clip, max=clip)
     return res
 
-def clip_weights_pass(traj_is_weights:torch.Tensor, clip:float)->torch.Tensor:
+def clip_weights_pass(
+    traj_is_weights:torch.Tensor, 
+    clip:float
+    )->torch.Tensor:
     """Helper function
 
     Args:

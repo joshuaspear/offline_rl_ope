@@ -4,7 +4,7 @@ from typing import List
 import pickle
 
 from .base import PropensityTrainer
-from ..types import Float32NDArray
+from ..types import Float32NDArray, NDArray
 
 __all__ = [
     "MultiOutputMultiClassTrainer"
@@ -24,11 +24,11 @@ class MultiOutputMultiClassTrainer(PropensityTrainer):
         super().__init__()
         self.estimator = estimator
         self.epsilon_pr = epsilon_pr
-        self.classes_def:List[np.array] = []
+        self.classes_def = []
         for mn,mx in zip(class_mins, class_maxs):
             self.classes_def.append(np.arange(mn, mx))
-        self.fitted_cls:List[np.array] = None
-        self.ms_idx:List[np.array] = None
+        #self.__fitted_cls:List[np.array] = [np.empty(0)]*len(self.classes_def)
+        self.__fitted_cls:List[NDArray] = []
         
         
     # def fit(
@@ -48,8 +48,8 @@ class MultiOutputMultiClassTrainer(PropensityTrainer):
     @staticmethod
     def __add_ms_cols(
         in_arr:Float32NDArray, 
-        clas_def:np.array, 
-        fit_cls:np.array, 
+        clas_def:NDArray, 
+        fit_cls:NDArray, 
         in_val:float
         )->Float32NDArray:
         if len(fit_cls) == 1:
@@ -74,7 +74,7 @@ class MultiOutputMultiClassTrainer(PropensityTrainer):
         res = self.estimator.predict_proba(X=x, *args, **kwargs)
         probs = [
             self.__add_ms_cols(y,c_d,f_c, self.epsilon_pr) 
-            for y,c_d,f_c in zip(res,self.classes_def, self.fitted_cls)
+            for y,c_d,f_c in zip(res, self.classes_def, self.fitted_cls)
             ]
         
         num_output = y.shape[1]
@@ -105,8 +105,10 @@ class MultiOutputMultiClassTrainer(PropensityTrainer):
     
     @property
     def fitted_cls(self):
+        msg = "Fitted class arrays are all empty"
+        assert [len(i)>0 for i in self.__fitted_cls], msg
         return self.__fitted_cls
     
     @fitted_cls.setter
-    def fitted_cls(self, val):
+    def fitted_cls(self, val:List[NDArray]):
         self.__fitted_cls = val

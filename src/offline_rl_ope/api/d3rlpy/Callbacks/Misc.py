@@ -22,7 +22,7 @@ class DiscreteValueByActionCallback(QueryCallbackBase):
         unique_action_vals:List, 
         dataset: ReplayBuffer,
         ) -> None:
-        super().__init__(debug_path=None)
+        super().__init__(debug=False, debug_path="")
         self.unique_action_vals = unique_action_vals
         self.dataset = dataset
         

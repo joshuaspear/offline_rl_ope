@@ -23,8 +23,10 @@ class ValidWeightsProp:
             (self.__is_obj.traj_is_weights > self.__min_w) & 
             (self.__is_obj.traj_is_weights < self.__max_w)
             )
-        vw_num = torch.sum(vw_mask, axis=1)
-        vw_denom = torch.sum(self.__is_obj.is_weight_calc.weight_msk, axis=1)
+        vw_num = torch.sum(input=vw_mask, dim=1)
+        vw_denom = torch.sum(
+            input=self.__is_obj.is_weight_calc.weight_msk, dim=1
+            )
         return torch.mean(vw_num/vw_denom).item()
         
     def __call__(self) -> float:

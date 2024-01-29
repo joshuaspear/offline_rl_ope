@@ -26,9 +26,10 @@ class ISCallback(ISWeightOrchestrator, OPECallbackBase):
         behav_policy: Policy, 
         dataset: ReplayBuffer, 
         eval_policy_kwargs:Dict[str,Any] = {},
-        debug_path:str=None, 
+        debug:bool=False,
+        debug_path:str="", 
         ) -> None:
-        OPECallbackBase.__init__(self, debug_path=debug_path)
+        OPECallbackBase.__init__(self, debug=debug, debug_path=debug_path)
         ISWeightOrchestrator.__init__(self, *is_types, 
                                       behav_policy=behav_policy)
         self.states:List[torch.Tensor] = []

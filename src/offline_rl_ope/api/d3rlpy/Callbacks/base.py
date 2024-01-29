@@ -4,9 +4,9 @@ from d3rlpy.interface import QLearningAlgoProtocol
 
 class OPECallbackBase(metaclass=ABCMeta):
     
-    def __init__(self, debug_path) -> None:
+    def __init__(self, debug:bool, debug_path:str) -> None:
         self.debug_path = debug_path
-        if self.debug_path is not None:
+        if debug:
             self._debug = self.debug_true
         else:
             self._debug = lambda algo, epoch, total_step: None
@@ -41,8 +41,8 @@ class OPECallbackBase(metaclass=ABCMeta):
 
 class QueryCallbackBase(OPECallbackBase):
     
-    def __init__(self, debug_path) -> None:
-        super().__init__(debug_path=debug_path)
+    def __init__(self, debug:bool, debug_path:str) -> None:
+        super().__init__(debug=debug, debug_path=debug_path)
         self.cache:Dict[str, Any] = {}
 
     def __getitem__(self, idx:str):

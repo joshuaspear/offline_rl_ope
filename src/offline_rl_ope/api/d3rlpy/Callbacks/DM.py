@@ -1,4 +1,4 @@
-from typing import Any, Callable, Dict, Union, Tuple, Sequence
+from typing import Any, Callable, Dict, Union, Tuple, Sequence, Optional
 import shutil
 import os
 import numpy as np
@@ -11,6 +11,7 @@ import gym
 import gymnasium
 
 from .base import QueryCallbackBase
+from ....types import NDArray
 
 Shape = Union[Sequence[int], Sequence[Sequence[int]]]
 GymEnv = Union[gym.Env[Any, Any], gymnasium.Env[Any, Any]]
@@ -25,12 +26,17 @@ class FQECallback(QueryCallbackBase):
     """ Scorer class for performing Fitted Q Evaluation
     """
     
-    def __init__(self, scorers:Dict[str, Callable], 
-                 fqe_cls:Union[FQE, DiscreteFQE], model_init_kwargs:Dict, 
-                 model_fit_kwargs:Dict, dataset:MDPDataset, 
-                 fqe_impl_init:FQEImplInitArg=None, device:DeviceArg = False
-                 ) -> None:
-        super().__init__(debug_path=None)
+    def __init__(
+        self, 
+        scorers:Dict[str, Callable], 
+        fqe_cls:Union[FQE, DiscreteFQE], 
+        model_init_kwargs:Dict, 
+        model_fit_kwargs:Dict, 
+        dataset:MDPDataset, 
+        fqe_impl_init:Optional[FQEImplInitArg]=None, 
+        device:DeviceArg = False
+        ) -> None:
+        super().__init__(debug=False, debug_path="")
         self.__scorers = scorers
         self.__dataset = dataset
         self.__fqe_cls = fqe_cls
@@ -77,7 +83,7 @@ class FQECallback(QueryCallbackBase):
             __file_path = os.path.join(
                 self.__logs_loc, "EXP_{}".format(self.__cur_exp), 
                 "{}.csv".format(scr))
-            lines:np.array = np.genfromtxt(__file_path, delimiter=',')
+            lines = np.genfromtxt(__file_path, delimiter=',')
             if len(lines.shape) == 1:
                 lines = lines.reshape(-1,1)
             res[scr] = lines[-1:,-1].item()

@@ -20,17 +20,26 @@ __all__ = [
 class ISEstimatorScorer(OPEEstimatorScorerBase, ISEstimator):
     
     def __init__(self, discount, cache:ISCallback, is_type:str, 
-                 norm_weights: bool, clip: float = None, 
-                 norm_kwargs:Dict[str,Any] = {},
+                 norm_weights: bool, clip_weights:bool=False,
+                 clip: float = 0.0, norm_kwargs:Dict[str,Any] = {},
                  episodes:Optional[Sequence[EpisodeBase]] = None
                  ) -> None:
         OPEEstimatorScorerBase.__init__(self, cache=cache, episodes=episodes)
-        ISEstimator.__init__(self, norm_weights=norm_weights, clip=clip, 
-                             norm_kwargs=norm_kwargs)
+        ISEstimator.__init__(
+            self, 
+            norm_weights=norm_weights, 
+            clip_weights=clip_weights,
+            clip=clip, 
+            norm_kwargs=norm_kwargs
+            )
         self.is_type = is_type
         self.discount = discount
         
-    def __call__(self, algo: QLearningAlgoProtocol, dataset: ReplayBuffer):
+    def __call__(
+        self, 
+        algo: QLearningAlgoProtocol, 
+        dataset: ReplayBuffer
+        )->float:
         episodes = self._episodes if self._episodes else dataset.episodes
         rewards = [torch.Tensor(ep.rewards) for ep in episodes]
         states = [torch.Tensor(ep.observations) for ep in episodes]

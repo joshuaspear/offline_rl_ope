@@ -142,7 +142,7 @@ class LinearMixedPolicy:
     def __call__(self, state: torch.Tensor, action: torch.Tensor):
         res = []
         for pol in self.__policy_funcs:
-            pol_out = pol(x=state, y=action)
+            pol_out = pol(state=state, action=action)
             res.append(pol_out)
         res = torch.cat(res, dim=1)
         self.__policy_predictions.append(res)

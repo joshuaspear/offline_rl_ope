@@ -48,7 +48,7 @@ class UtilsTest(unittest.TestCase):
                                        atol=toll.numpy())
     
     def test_norm_weights_wis(self):
-        denom = weight_test_res.sum(axis=0)/msk_test_res.sum(axis=0)
+        denom = weight_test_res.sum(dim=0)/msk_test_res.sum(dim=0)
         test_res = weight_test_res/denom
         toll = test_res.mean()/1000
         calculator = WISNormWeights()
@@ -60,8 +60,8 @@ class UtilsTest(unittest.TestCase):
 
     def test_norm_weights_wis_smooth(self):
         smooth_eps = 0.00000001
-        denom = (weight_test_res_alter.sum(axis=0)+smooth_eps)/(
-            msk_test_res.sum(axis=0)+smooth_eps)
+        denom = (weight_test_res_alter.sum(dim=0)+smooth_eps)/(
+            msk_test_res.sum(dim=0)+smooth_eps)
         test_res: torch.Tensor = weight_test_res_alter/(denom)
         toll = test_res.nanmean()/1000
         calculator = WISNormWeights(smooth_eps=smooth_eps)
@@ -72,7 +72,7 @@ class UtilsTest(unittest.TestCase):
                                    atol=toll.numpy())
         
     def test_norm_weights_wis_no_smooth(self):
-        denom = weight_test_res_alter.sum(axis=0)/msk_test_res.sum(axis=0)
+        denom = weight_test_res_alter.sum(dim=0)/msk_test_res.sum(dim=0)
         test_res: torch.Tensor = weight_test_res_alter/denom
         toll = test_res.nanmean()/1000
         calculator = WISNormWeights()
