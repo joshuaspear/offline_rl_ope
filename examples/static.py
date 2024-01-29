@@ -12,13 +12,14 @@ from xgboost import XGBClassifier
 import torch
 
 from offline_rl_ope.Dataset import ISEpisode
-from offline_rl_ope.components.Policy import BehavPolicy, D3RlPyDeterministic
+from offline_rl_ope.components.Policy import BehavPolicy, GreedyDeterministic
 from offline_rl_ope.components.ImportanceSampler import ISWeightOrchestrator
 from offline_rl_ope.OPEEstimators import (
     ISEstimator, DREstimator, D3rlpyQlearnDM)
 from offline_rl_ope.LowerBounds.HCOPE import get_lower_bound
 
-from offline_rl_ope.api.d3rlpy import D3RlPyTorchAlgoPredict
+from offline_rl_ope.api.d3rlpy.Misc import D3RlPyTorchAlgoPredict
+
 
 # obtain dataset
 dataset, env = get_cartpole()
@@ -38,17 +39,19 @@ class GbtEst:
     def __init__(self, estimator:MultiOutputClassifier) -> None:
         self.estimator = estimator
     
-    def eval_pdf(self, indep_vals:np.array, dep_vals:np.array):
-        probs = self.estimator.predict_proba(X=indep_vals)
+    def __call__(self, y:torch.Tensor, x:torch.Tensor):
+        x = x.numpy()
+        y = y.numpy()
+        probs = self.estimator.predict_proba(X=x)
         res = []
         for i,out_prob in enumerate(probs):
             tmp_res = out_prob[
                 np.arange(len(out_prob)),
-                dep_vals[:,i].squeeze().astype(int)
+                y[:,i].squeeze().astype(int)
                 ]
             res.append(tmp_res.reshape(1,-1))
         res = np.concatenate(res, axis=0).prod(axis=0)
-        return res
+        return torch.tensor(res)
 
 behav_est = MultiOutputClassifier(OneVsRestClassifier(XGBClassifier(
     objective="binary:logistic")))
@@ -69,7 +72,7 @@ actions = np.concatenate(actions)
 behav_est.fit(X=observations, Y=actions.reshape(-1,1))
 
 gbt_est = GbtEst(estimator=behav_est)
-gbt_policy_be = BehavPolicy(policy_class=gbt_est, collect_res=False)
+gbt_policy_be = BehavPolicy(policy_func=gbt_est, collect_res=False)
 
 no_obs_steps = int(len(actions)*0.025)
 n_epochs=1
@@ -97,9 +100,11 @@ discrete_fqe.fit(dataset, evaluators=fqe_scorers, n_steps=no_obs_steps)
 
      
 # Static OPE evaluation 
-policy_class = D3RlPyTorchAlgoPredict(predict_func=dqn.predict)
-eval_policy = D3RlPyDeterministic(policy_class=policy_class, collect_res=False, 
-                                  collect_act=True, gpu=False)
+policy_func = D3RlPyTorchAlgoPredict(predict_func=dqn.predict)
+eval_policy = GreedyDeterministic(
+    policy_func=policy_func, collect_res=False, 
+    collect_act=True, gpu=False
+    )
 
 episodes = []
 for ep in dataset.episodes:
