@@ -5,11 +5,11 @@ import numpy as np
 from sklearn.base import BaseEstimator
 
 __all__ = [
-    "PropensityEstimatorType",
+    "NDArray", 
+    "Float32NDArray",
     "PropensityTorchOutputType"
     ]
 
 NDArray = npt.NDArray[Any]
 Float32NDArray = npt.NDArray[np.float32]
-PropensityEstimatorType = Union[torch.nn.Module, BaseEstimator]
 PropensityTorchOutputType = Dict[str,torch.Tensor]

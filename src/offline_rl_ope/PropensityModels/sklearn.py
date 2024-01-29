@@ -21,7 +21,8 @@ class MultiOutputMultiClassTrainer(PropensityTrainer):
         ) -> None:
         if not isinstance(estimator, MultiOutputClassifier):
             raise Exception
-        super().__init__(estimator=estimator)
+        super().__init__()
+        self.estimator = estimator
         self.epsilon_pr = epsilon_pr
         self.classes_def:List[np.array] = []
         for mn,mx in zip(class_mins, class_maxs):
@@ -45,8 +46,12 @@ class MultiOutputMultiClassTrainer(PropensityTrainer):
     #     res = self.estimator.fit(X=x, Y=y, *args, **kwargs)
     
     @staticmethod
-    def __add_ms_cols(in_arr:np.array, clas_def:np.array, fit_cls:np.array, 
-                      in_val:float):
+    def __add_ms_cols(
+        in_arr:Float32NDArray, 
+        clas_def:np.array, 
+        fit_cls:np.array, 
+        in_val:float
+        )->Float32NDArray:
         if len(fit_cls) == 1:
             # When there is only one class, the predict_proba outputs
             # P(X = 1) and P(X \neq 1)
@@ -65,7 +70,7 @@ class MultiOutputMultiClassTrainer(PropensityTrainer):
         y:Float32NDArray, 
         *args, 
         **kwargs
-        ):
+        ) -> Float32NDArray:
         res = self.estimator.predict_proba(X=x, *args, **kwargs)
         probs = [
             self.__add_ms_cols(y,c_d,f_c, self.epsilon_pr) 
@@ -91,7 +96,7 @@ class MultiOutputMultiClassTrainer(PropensityTrainer):
         res = np.concatenate(res, axis=0).prod(axis=0)
         return res
     
-    def predict(self, x, *args, **kwargs):
+    def predict(self, x:Float32NDArray, *args, **kwargs)->Float32NDArray:
         return self.estimator.predict(X=x, *args, **kwargs)
     
     def save(self, path:str) -> None:

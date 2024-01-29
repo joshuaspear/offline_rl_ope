@@ -1,13 +1,10 @@
 import torch
 import torch.nn as nn
-from torch.utils.data import DataLoader, Dataset
-import os
 import numpy as np
 import pickle
 
 from ..base import PropensityTrainer
 from .models.base import PropensityTorchBase
-from ...types import Float32NDArray
 
 __all__ = [
     "TorchPropensityTrainer",
@@ -22,7 +19,7 @@ class TorchPropensityTrainer(PropensityTrainer):
         estimator:PropensityTorchBase, 
         gpu:bool,
         ) -> None:
-        super().__init__(estimator=estimator)
+        self.estimator = estimator
         self.gpu = gpu
         if self.gpu:
             self.input_setup = self.load_to_gpu
@@ -51,6 +48,8 @@ class TorchPropensityTrainer(PropensityTrainer):
             pickle.dump(self, f)
         if self.gpu:
             self.to_gpu()
+    
+        
                
 class TorchClassTrainer(TorchPropensityTrainer):
     def __init__(
@@ -63,27 +62,42 @@ class TorchClassTrainer(TorchPropensityTrainer):
 
     def predict(
         self, 
-        x:Float32NDArray, 
+        x:torch.Tensor, 
         *args, 
         **kwargs
-        ) -> Float32NDArray:
-        x = torch.Tensor(x)
+        ) -> torch.Tensor:
+        """Outputs the y values with highest likelihood given x
+
+        Args:
+            x (torch.Tensor): _description_
+
+        Returns:
+            torch.Tensor: _description_
+        """
         x = self.input_setup(x)
         self.estimator.eval()
         res = self.estimator(x)
         # Take max over values
         res = torch.argmax(res["out"], dim=1, keepdim=False)
-        res = res.cpu().detach().numpy()
         return res
     
     def predict_proba(
         self, 
-        x: Float32NDArray, 
-        y: Float32NDArray, 
+        x: torch.Tensor, 
+        y: torch.Tensor, 
         *args, 
         **kwargs
-        ) -> Float32NDArray:
-        x = torch.Tensor(x)
+        ) -> torch.Tensor:
+        """Outputs the normalised likelihood of each dimension of
+        y given input x for classification.
+
+        Args:
+            x (torch.Tensor): _description_
+            y (torch.Tensor): _description_
+
+        Returns:
+            torch.Tensor: _description_
+        """
         x = self.input_setup(x)
         self.estimator.eval()
         res = self.estimator(x)
@@ -109,11 +123,10 @@ class TorchRegTrainer(TorchPropensityTrainer):
               
     def predict(
         self, 
-        x:Float32NDArray, 
+        x:torch.Tensor, 
         *args, 
         **kwargs
-        ) -> Float32NDArray:
-        x = torch.Tensor(x)
+        ) -> torch.Tensor:
         x = self.input_setup(x)
         self.estimator.eval()
         res = self.estimator(x)
@@ -122,11 +135,11 @@ class TorchRegTrainer(TorchPropensityTrainer):
     
     def predict_proba(
         self, 
-        x: Float32NDArray, 
-        y: Float32NDArray, 
+        x: torch.Tensor, 
+        y: torch.Tensor, 
         *args, 
         **kwargs
-        ) -> Float32NDArray:
+        ) -> torch.Tensor:
         x = torch.Tensor(x)
         x = self.input_setup(x)
         y = torch.Tensor(y)
