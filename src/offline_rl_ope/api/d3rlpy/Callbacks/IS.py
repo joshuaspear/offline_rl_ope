@@ -2,30 +2,20 @@ import logging
 import numpy as np
 import os
 import torch
-from typing import Any, Dict, List, Callable
+from typing import Any, Dict, List
 from d3rlpy.interface import QLearningAlgoProtocol
 from d3rlpy.dataset import ReplayBuffer
 
-from ....components.Policy import Policy, D3RlPyDeterministic
+from ....components.Policy import Policy, GreedyDeterministic
 from ....components.ImportanceSampler import ISWeightOrchestrator
 from .base import OPECallbackBase
+from ..Misc import D3RlPyTorchAlgoPredict
 
 logger = logging.getLogger("offline_rl_ope")
 
 __all__ = [
-    "ISCallback", "D3RlPyTorchAlgoPredict"
+    "ISCallback"
     ]
-
-
-class D3RlPyTorchAlgoPredict:
-    
-    def __init__(self, predict_func:Callable):
-        self.predict_func = predict_func
-        
-    def __call__(self, x:torch.Tensor):
-        pred = self.predict_func(x.cpu().numpy())
-        return torch.Tensor(pred)
-
 
 class ISCallback(ISWeightOrchestrator, OPECallbackBase):
     """Wrapper class for performing importance sampling
@@ -72,7 +62,7 @@ class ISCallback(ISWeightOrchestrator, OPECallbackBase):
         ) -> None:
         policy_func = D3RlPyTorchAlgoPredict(
             predict_func=algo.predict)
-        eval_policy = D3RlPyDeterministic(
+        eval_policy = GreedyDeterministic(
             policy_func=policy_func, 
             **self.eval_policy_kwargs
             )

@@ -1,3 +1,3 @@
-from .Policy import Policy, D3RlPyDeterministic, BehavPolicy, LinearMixedPolicy
+from .Policy import *
 from .ImportanceSampler import (
     ISWeightCalculator, ISWeightOrchestrator, PerDecisionIS, VanillaIS)
