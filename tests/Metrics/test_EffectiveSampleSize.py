@@ -18,8 +18,10 @@ class TestImportanceSampler:
 class EffectiveSampleSizeTest(unittest.TestCase):
 
     def test_call(self):
-        num = torch.sum(torch.pow(weight_test_res,2))
-        denum = torch.pow(torch.sum(weight_test_res),2)
+        num = 2
+        weights = weight_test_res.sum(dim=1)
+        assert len(weights) == 2
+        denum = 1 + torch.var(weights)
         act_res = (num/denum).item()
         metric = EffectiveSampleSize(is_obj=TestImportanceSampler())
         pred_res = metric()

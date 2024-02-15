@@ -82,7 +82,7 @@ class BehavPolicy(Policy):
     
     def __init__(
         self, 
-        policy_func:Callable[..., torch.Tensor], 
+        policy_func:Callable[[torch.Tensor,torch.Tensor], torch.Tensor], 
         collect_res:bool=False, 
         collect_act:bool=False, 
         gpu:bool=False
@@ -90,7 +90,7 @@ class BehavPolicy(Policy):
         super().__init__(policy_func, collect_res=collect_res, 
                          collect_act=collect_act, gpu=gpu)
         
-    def __call__(self, state: torch.Tensor, action: torch.Tensor):
+    def __call__(self, state:torch.Tensor, action:torch.Tensor)->torch.Tensor:
         pre_dim = state.shape[0]
         res = self.policy_func(y=action, x=state)
         res = res.view(pre_dim, -1)
@@ -102,7 +102,7 @@ class GreedyDeterministic(Policy):
     
     def __init__(
         self, 
-        policy_func:Callable[..., torch.Tensor], 
+        policy_func:Callable[[torch.Tensor], torch.Tensor], 
         collect_res:bool=False, 
         collect_act:bool=False, 
         gpu:bool=False, 
@@ -139,7 +139,7 @@ class LinearMixedPolicy:
     def policy_predictions(self):
         return self.__policy_predictions
         
-    def __call__(self, state: torch.Tensor, action: torch.Tensor):
+    def __call__(self, state: torch.Tensor, action: torch.Tensor)->torch.Tensor:
         res = []
         for pol in self.__policy_funcs:
             pol_out = pol(state=state, action=action)

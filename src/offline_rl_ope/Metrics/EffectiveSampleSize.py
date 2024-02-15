@@ -11,10 +11,11 @@ class EffectiveSampleSize:
     def __init__(self, is_obj:ImportanceSampler) -> None:
         self.__is_obj = is_obj
     
-    def __ess(self) -> float:
-        numer = torch.sum(torch.pow(self.__is_obj.traj_is_weights,2))
-        denom = torch.pow(torch.sum(self.__is_obj.traj_is_weights),2)
-        return (numer/denom).item()
+    def __ess(self) -> float:        
+        # https://victorelvira.github.io/papers/kong92.pdf
+        weights = self.__is_obj.traj_is_weights.sum(dim=1)
+        numer = len(weights)
+        return (numer/(1+torch.var(weights))).item()
         
     
     def __call__(self) -> float:

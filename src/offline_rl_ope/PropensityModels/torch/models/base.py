@@ -23,7 +23,8 @@ class PropensityTorchBase(nn.Module):
 class PropensityTorchMlpBase(PropensityTorchBase):
     
     def __init__(
-        self, input_dim:int, 
+        self, 
+        input_dim:int, 
         layers_dim:List[int], 
         actvton, 
         init_bias:float = 0

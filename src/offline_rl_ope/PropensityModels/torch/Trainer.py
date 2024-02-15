@@ -4,7 +4,7 @@ import numpy as np
 import pickle
 
 from ..base import PropensityTrainer
-from .models.base import PropensityTorchBase
+from ...types import PropensityTorchBaseType
 
 __all__ = [
     "TorchPropensityTrainer",
@@ -16,7 +16,7 @@ class TorchPropensityTrainer(PropensityTrainer):
     
     def __init__(
         self, 
-        estimator:PropensityTorchBase, 
+        estimator:PropensityTorchBaseType, 
         gpu:bool,
         ) -> None:
         self.estimator = estimator
@@ -54,7 +54,7 @@ class TorchPropensityTrainer(PropensityTrainer):
 class TorchClassTrainer(TorchPropensityTrainer):
     def __init__(
         self, 
-        estimator:nn.Module, 
+        estimator:PropensityTorchBaseType, 
         gpu:bool
         ) -> None:
         
@@ -66,7 +66,9 @@ class TorchClassTrainer(TorchPropensityTrainer):
         *args, 
         **kwargs
         ) -> torch.Tensor:
-        """Outputs the y values with highest likelihood given x
+        """Outputs the y values with highest likelihood given x.
+        res["out"] is expected to be of dimension: 
+            (batch_size, n action values, n actions)
 
         Args:
             x (torch.Tensor): _description_
@@ -90,6 +92,8 @@ class TorchClassTrainer(TorchPropensityTrainer):
         ) -> torch.Tensor:
         """Outputs the normalised likelihood of each dimension of
         y given input x for classification.
+        res["out"] is expected to be of dimension: 
+            (batch_size, n action values, n actions)
 
         Args:
             x (torch.Tensor): _description_
@@ -101,12 +105,12 @@ class TorchClassTrainer(TorchPropensityTrainer):
         x = self.input_setup(x)
         self.estimator.eval()
         res = self.estimator(x)
-        res_out = res["out"].cpu().detach().numpy()
+        res_out = res["out"].cpu().detach()
         n_rows = res_out.shape[0]
         n_out = res_out.shape[2]
         dim_0_sub = np.arange(0,n_rows)[:,None]
         dim_1_sub = np.tile(np.arange(0,n_out), (n_rows,1))
-        res_out = res_out[dim_0_sub,y.astype(int),dim_1_sub]
+        res_out = res_out[dim_0_sub,y.int(),dim_1_sub]
         return res_out
         
 
@@ -114,7 +118,7 @@ class TorchRegTrainer(TorchPropensityTrainer):
     
     def __init__(
         self, 
-        estimator:nn.Module, 
+        estimator:PropensityTorchBaseType, 
         dist_func:torch.distributions.Distribution, 
         gpu:bool
         ) -> None:
