@@ -3,6 +3,7 @@
 **WARNING**
 - Weighted importance sampling was incorrectly implemented in versions 1.X.X and 2.1.X, 2.2.X
 - Unit testing currently only running in Python 3.11. 3.10 will be supported in the future
+- Only 1 dimensional discrete action spaces are currently supported!
 
 **IMPORTANT: THIS IS A BETA RELEASE. FUNCTIONALITY IS STILL BEING TESTED** Feedback/contributions are welcome :) 
 
