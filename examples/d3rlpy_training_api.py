@@ -11,10 +11,19 @@ from sklearn.multioutput import MultiOutputClassifier
 from sklearn.multiclass import OneVsRestClassifier
 from xgboost import XGBClassifier
 import shutil
+import torch
 
-from offline_rl_ope.api.d3rlpy import (
-    ISCallback, FQECallback, ISEstimatorScorer, EpochCallbackHandler, 
-    QueryScorer, ISDiscreteActionDistScorer, DiscreteValueByActionCallback)
+# Import callbacks
+from offline_rl_ope.api.d3rlpy.Callbacks import (
+    
+    ISCallback, FQECallback, EpochCallbackHandler, 
+    DiscreteValueByActionCallback
+    )
+
+# Import evaluators
+from offline_rl_ope.api.d3rlpy.Scorers import (
+    ISEstimatorScorer, ISDiscreteActionDistScorer, QueryScorer
+    )
 from offline_rl_ope.components.Policy import BehavPolicy
 
 # obtain dataset
@@ -35,17 +44,19 @@ class GbtEst:
     def __init__(self, estimator:MultiOutputClassifier) -> None:
         self.estimator = estimator
     
-    def eval_pdf(self, indep_vals:np.array, dep_vals:np.array):
-        probs = self.estimator.predict_proba(X=indep_vals)
+    def __call__(self, y:torch.Tensor, x:torch.Tensor):
+        x = x.numpy()
+        y = y.numpy()
+        probs = self.estimator.predict_proba(X=x)
         res = []
         for i,out_prob in enumerate(probs):
             tmp_res = out_prob[
                 np.arange(len(out_prob)),
-                dep_vals[:,i].squeeze().astype(int)
+                y[:,i].squeeze().astype(int)
                 ]
             res.append(tmp_res.reshape(1,-1))
         res = np.concatenate(res, axis=0).prod(axis=0)
-        return res
+        return torch.tensor(res)
 
 behav_est = MultiOutputClassifier(OneVsRestClassifier(XGBClassifier(
     objective="binary:logistic")))
@@ -66,12 +77,18 @@ actions = np.concatenate(actions)
 behav_est.fit(X=observations, Y=actions.reshape(-1,1))
 
 gbt_est = GbtEst(estimator=behav_est)
-gbt_policy_be = BehavPolicy(policy_class=gbt_est, collect_res=False)
+gbt_policy_be = BehavPolicy(policy_func=gbt_est, collect_res=False)
 
 
-is_callback = ISCallback(is_types=["vanilla", "per_decision"], 
-                         behav_policy=gbt_policy_be, episodes=dataset.episodes, 
-                         gpu=False, collect_act=True)
+is_callback = ISCallback(
+    is_types=["vanilla", "per_decision"], 
+    behav_policy=gbt_policy_be, 
+    dataset=dataset,
+    eval_policy_kwargs={
+        "gpu": False, 
+        "collect_act": True   
+    }
+    )
 
 fqe_scorers = {
     "soft_opc": SoftOPCEvaluator(70), 

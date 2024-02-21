@@ -1,27 +1,42 @@
-from typing import Callable, Dict, Union, Tuple
+from typing import Any, Callable, Dict, Union, Tuple, Sequence, Optional
 import shutil
 import os
 import numpy as np
 from d3rlpy.ope.fqe import FQEConfig, FQE, DiscreteFQE
-from d3rlpy.dataset import MDPDataset, Shape
+from d3rlpy.dataset import MDPDataset
 from d3rlpy.interface import QLearningAlgoProtocol
 from d3rlpy.base import DeviceArg
 from d3rlpy.logging import FileAdapterFactory
-from d3rlpy.envs import GymEnv
+import gym
+import gymnasium
 
-from .utils import QueryCallbackBase
+from .base import QueryCallbackBase
+from ....types import NDArray
 
+Shape = Union[Sequence[int], Sequence[Sequence[int]]]
+GymEnv = Union[gym.Env[Any, Any], gymnasium.Env[Any, Any]]
 FQEImplInitArg = Union[GymEnv, Tuple[Shape, int]]
+
+__all__ = [
+    "FQECallback"
+    ]
+
 
 class FQECallback(QueryCallbackBase):
     """ Scorer class for performing Fitted Q Evaluation
     """
     
-    def __init__(self, scorers:Dict[str, Callable], 
-                 fqe_cls:Union[FQE, DiscreteFQE], model_init_kwargs:Dict, 
-                 model_fit_kwargs:Dict, dataset:MDPDataset, 
-                 fqe_impl_init:FQEImplInitArg=None, device:DeviceArg = False
-                 ) -> None:
+    def __init__(
+        self, 
+        scorers:Dict[str, Callable], 
+        fqe_cls:Union[FQE, DiscreteFQE], 
+        model_init_kwargs:Dict, 
+        model_fit_kwargs:Dict, 
+        dataset:MDPDataset, 
+        fqe_impl_init:Optional[FQEImplInitArg]=None, 
+        device:DeviceArg = False
+        ) -> None:
+        super().__init__(debug=False, debug_path="")
         self.__scorers = scorers
         self.__dataset = dataset
         self.__fqe_cls = fqe_cls
@@ -32,8 +47,16 @@ class FQECallback(QueryCallbackBase):
         os.mkdir(self.__logs_loc)
         self.__fqe_impl_init = fqe_impl_init
         self.__device = device
+        
+    def debug_true(
+        self,
+        algo: QLearningAlgoProtocol, 
+        epoch:int, 
+        total_step:int
+        ):
+        pass
             
-    def __call__(self, algo: QLearningAlgoProtocol, epoch:int, total_step:int):
+    def run(self, algo: QLearningAlgoProtocol, epoch:int, total_step:int):
         fqe_config = FQEConfig(**self.__model_init_kwargs)
         fqe = self.__fqe_cls(algo=algo, config=fqe_config, device=self.__device)
         if self.__fqe_impl_init is not None:
@@ -60,7 +83,7 @@ class FQECallback(QueryCallbackBase):
             __file_path = os.path.join(
                 self.__logs_loc, "EXP_{}".format(self.__cur_exp), 
                 "{}.csv".format(scr))
-            lines:np.array = np.genfromtxt(__file_path, delimiter=',')
+            lines = np.genfromtxt(__file_path, delimiter=',')
             if len(lines.shape) == 1:
                 lines = lines.reshape(-1,1)
             res[scr] = lines[-1:,-1].item()

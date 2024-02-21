@@ -1,0 +1,3 @@
+#!/bin/bash -eux
+
+mypy src/offline_rl_ope

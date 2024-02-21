@@ -4,7 +4,7 @@ import torch
 import logging
 import numpy as np
 from offline_rl_ope.components.Policy import (
-    D3RlPyDeterministic, BehavPolicy)
+    GreedyDeterministic, BehavPolicy)
 from ..base import (test_action_probs, test_action_vals, test_eval_action_probs, 
                     test_eval_action_vals, test_reward_values, test_state_vals)
 
@@ -23,10 +23,10 @@ class D3RlPyDeterministicTest(unittest.TestCase):
                 for state,act in zip(test_state_vals, test_eval_action_vals)
                 }
             return lkp[str(x)]
-        policy_class = MagicMock(side_effect=__mock_return)
-        self.policy_0_eps = D3RlPyDeterministic(policy_class, gpu=False)
-        self.policy_001_eps = D3RlPyDeterministic(
-            policy_class, gpu=False, eps=eps)
+        policy_func = MagicMock(side_effect=__mock_return)
+        self.policy_0_eps = GreedyDeterministic(policy_func, gpu=False)
+        self.policy_001_eps = GreedyDeterministic(
+            policy_func, gpu=False, eps=eps)
     
     def test___call__0_eps(self):
         test_pred = []
@@ -73,19 +73,28 @@ class MockPolicyClass:
 class BehavPolicyTest(unittest.TestCase):
     
     def setUp(self) -> None:
-        def __mock_return(dep_vals, indep_vals):
+        def __mock_return(y, x):
             lkp = {
-                "_".join([str(np.array(state).astype(float)),
-                          str(np.array(act).astype(float))]): np.array(probs) 
+                "_".join(
+                    [
+                        str(torch.tensor(state).float()), 
+                        str(torch.tensor(act).float())
+                        ]
+                    ): torch.tensor(probs) 
                 for state,act,probs in zip(
                     test_state_vals, test_action_vals, 
                     test_action_probs)
                 }
-            print(lkp)
-            return lkp["_".join([str(indep_vals),str(dep_vals)])]
-        policy_class = MockPolicyClass()
-        policy_class.eval_pdf = MagicMock(side_effect=__mock_return)
-        self.policy = BehavPolicy(policy_class)
+            print(f"x: {x}")
+            print(f"y: {y}")
+            print(f"lkp: {list(lkp.keys())[0]}")
+            print(f'id: {"_".join([str(x),str(y)])}')
+            return lkp["_".join([str(x),str(y)])]
+        #policy_func = MockPolicyClass()
+        #policy_func.__call__ = MagicMock(side_effect=__mock_return)
+        #self.policy = BehavPolicy(policy_func)
+        self.policy = BehavPolicy(
+            policy_func=MagicMock(side_effect=__mock_return))
 
     
     def test___call__(self):

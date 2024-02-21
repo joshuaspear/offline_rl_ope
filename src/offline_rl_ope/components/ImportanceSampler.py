@@ -1,7 +1,6 @@
 from abc import ABCMeta, abstractmethod
 import logging
 from typing import Dict, List, Tuple
-import numpy as np
 import torch
 from torch.nn.functional import pad
 
@@ -14,9 +13,9 @@ logger = logging.getLogger("offline_rl_ope")
 class ISWeightCalculator:
     def __init__(self, behav_policy:Policy) -> None:
         self.__behav_policy = behav_policy
-        self.is_weights = None
-        self.weight_msk = None
-        self.policy_actions = None
+        self.is_weights = torch.empty(0)
+        self.weight_msk = torch.empty(0)
+        self.policy_actions = torch.empty(0)
         
     def get_traj_w(self, states:torch.Tensor, actions:torch.Tensor, 
                    eval_policy:Policy)->torch.Tensor:
@@ -48,7 +47,7 @@ class ISWeightCalculator:
     def get_dataset_w(self, states:List[torch.Tensor], 
                       actions:List[torch.Tensor], 
                       eval_policy:Policy
-                      )->Tuple[torch.Tensor]:
+                      )->Tuple[torch.Tensor, torch.Tensor]:
         """_summary_
 
         Args:
@@ -73,47 +72,47 @@ class ISWeightCalculator:
         assert len(states) == len(actions)
         # weight_res = torch.zeros(size=(len(states),h))
         # weight_msk = torch.zeros(size=(len(states),h))
-        weight_res = []
-        weight_msk = []
+        weight_res_lst:List[torch.Tensor] = []
+        weight_msk_lst:List[torch.Tensor] = []
         h = 0
         for i, (s,a) in enumerate(zip(states, actions)):
             weight = self.get_traj_w(states=s, actions=a, 
                                      eval_policy=eval_policy) 
-            #weight_res[i,:len(weight)] = weight
-            weight_res.append(weight)
+            #weight_res_lst[i,:len(weight)] = weight
+            weight_res_lst.append(weight)
             __h = len(weight)
-            #weight_msk[i,:len(weight)] = 
-            weight_msk.append(torch.ones(size=[__h]))
+            #weight_msk_lst[i,:len(weight)] = 
+            weight_msk_lst.append(torch.ones(size=[__h]))
             h = max(h,__h)
         # pad all tensors to have same length
-        weight_res = [
+        weight_res_lst = [
             pad(x, pad=(0, h - x.numel()), mode='constant', value=0) 
-            for x in weight_res
+            for x in weight_res_lst
             ]
-        weight_res = torch.stack(weight_res)
+        weight_res = torch.stack(weight_res_lst)
         # stack them
-        weight_msk = [
+        weight_msk_lst = [
             pad(x, pad=(0, h - x.numel()), mode='constant', value=0) 
-            for x in weight_msk
+            for x in weight_msk_lst
             ]
-        weight_msk = torch.stack(weight_msk)
+        weight_msk = torch.stack(weight_msk_lst)
         return weight_res, weight_msk
     
     def update(self, states:List[torch.Tensor], actions:List[torch.Tensor], 
-               eval_policy=Policy):
+               eval_policy:Policy):
         self.is_weights, self.weight_msk = self.get_dataset_w(
             states=states, actions=actions, eval_policy=eval_policy)
         self.policy_actions = eval_policy.policy_actions
 
     def flush(self):
-        self.is_weights = None
+        self.is_weights = torch.empty(0)
         
 
 class ImportanceSampler(metaclass=ABCMeta):
     
     def __init__(self, is_weight_calc:ISWeightCalculator) -> None:
         self.is_weight_calc = is_weight_calc
-        self.traj_is_weights = None
+        self.traj_is_weights = torch.empty(0)
         
     
     def update(self):
@@ -123,7 +122,7 @@ class ImportanceSampler(metaclass=ABCMeta):
         )
     
     def flush(self):
-        self.traj_is_weights = None
+        self.traj_is_weights = torch.empty(0)
     
     @abstractmethod
     def get_traj_weight_array(

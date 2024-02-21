@@ -1,7 +1,9 @@
 # offline_rl_ope (BETA RELEASE)
 
-**WARNING: Weighted importance sampling was incorrectly implemented in versions 1.X.X and 2.1.X, 2.2.X**
-**WARNING: Unit testing currently only running in Python 3.11. 3.10 will be supported in the future**
+**WARNING**
+- Weighted importance sampling was incorrectly implemented in versions 1.X.X and 2.1.X, 2.2.X
+- Unit testing currently only running in Python 3.11. 3.10 will be supported in the future
+- Only 1 dimensional discrete action spaces are currently supported!
 
 **IMPORTANT: THIS IS A BETA RELEASE. FUNCTIONALITY IS STILL BEING TESTED** Feedback/contributions are welcome :) 
 
@@ -14,6 +16,10 @@
   - [x] utils.py
   - [x] DirectMethod.py*
   - [x] DoublyRobust.py
+- [x] Metrics
+  - [x] EffectiveSampleSize.py
+  - [x] ValidWeightsProp.py
+- [ ] PropensityModels
 - [ ] LowerBounds
 - [ ] api/d3rlpy
 
@@ -82,6 +88,15 @@ If importance sampling based methods are evaluating to 0, consider visualising t
 The different kinds of importance samples can also be visualised by querying the ```traj_is_weights``` attribute of a given ```ImportanceSampler``` object. If for example, vanilla importance sampling is being used and the samples are not ```NaN``` or ```Inf``` then visualising the ```traj_is_weights``` may provide insight. In particular, IS weights will tend to inifinity when the evaluation policy places large density on an action in comparison to the behaviour policy.
 
 ### Release log
+#### 4.0.0
+* Predefined propensity models including:
+  * Generic feedforward MLP for continuous and discrete action spaces built in PyTorch
+  * xGBoost for continuous and discrete action spaces built in sklearn
+  * Both PyTorch and sklearn models can handle space discrete actions spaces i.e., a propensity model can be exposed to 'new' actions provided the full action space definition is provided at the training time of the propensity model
+* Metrics pattern with:
+  * Effective sample size calculation
+  * Proportion of valid weights i.e., the mean proportion of weights between a min and max value across trajectories
+* Refactored the BehavPolicy class to accept a 'policy_func' that aligns with the other policy classes
 #### 3.0.3 
 * 3.10 support
 #### 3.0.2 

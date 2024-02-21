@@ -1,28 +1,33 @@
 import logging
 import torch
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
-from .utils import (WISNormWeights, NormWeightsPass, clip_weights_pass, 
-                    clip_weights)
+from .utils import (WISNormWeights, NormWeightsPass, clip_weights_pass as cwp, 
+                    clip_weights as cw)
 from .base import OPEEstimatorBase
 
 logger = logging.getLogger("offline_rl_ope")
 
 class ISEstimatorBase(OPEEstimatorBase):
     
-    def __init__(self, norm_weights:bool, clip:float=None, 
-                 cache_traj_rewards:bool=False, norm_kwargs:Dict[str,Any] = {}
-                 ) -> None:
+    def __init__(
+        self, 
+        norm_weights:bool, 
+        clip_weights:bool=False, 
+        cache_traj_rewards:bool=False,
+        clip:float=0.0,
+        norm_kwargs:Dict[str,Any] = {}
+        ) -> None:
         super().__init__(cache_traj_rewards)
         if norm_weights:    
             self.norm_weights = WISNormWeights(**norm_kwargs)
         else:
             self.norm_weights = NormWeightsPass(**norm_kwargs)
         self.clip = clip
-        if clip:
-            self.clip_weights = clip_weights
+        if clip_weights:
+            self.clip_weights = cw
         else:
-            self.clip_weights = clip_weights_pass
+            self.clip_weights = cwp
     
     def process_weights(self, weights:torch.Tensor, is_msk:torch.Tensor):
         assert weights.shape == is_msk.shape
@@ -34,11 +39,16 @@ class ISEstimatorBase(OPEEstimatorBase):
 
 class ISEstimator(ISEstimatorBase):
     
-    def __init__(self, norm_weights: bool, clip: float = None,
-                 cache_traj_rewards:bool=False, norm_kwargs:Dict[str,Any] = {}
-                 ) -> None:
-        super().__init__(norm_weights=norm_weights, clip=clip, 
-                         cache_traj_rewards=cache_traj_rewards, 
+    def __init__(
+        self, 
+        norm_weights: bool, 
+        clip_weights:bool=False, 
+        clip: float = 0.0, 
+        cache_traj_rewards:bool=False, 
+        norm_kwargs:Dict[str,Any] = {}
+        ) -> None:
+        super().__init__(norm_weights=norm_weights, clip_weights=clip_weights, 
+                         clip=clip, cache_traj_rewards=cache_traj_rewards, 
                          norm_kwargs=norm_kwargs)
         
     def get_dataset_discnt_reward(self, rewards:List[torch.Tensor], 
@@ -92,11 +102,11 @@ class ISEstimator(ISEstimatorBase):
             torch.Tensor: tensor of size (# trajectories,) defining the 
             individual trajectory rewards
         """
-        h:int = weights.shape[1]
+        h = weights.shape[1]
         discnt_rewards = self.get_dataset_discnt_reward(
             rewards=rewards, discount=discount, h=h)
         weights = self.process_weights(weights=weights, is_msk=is_msk)
-        res:torch.Tensor = torch.mul(discnt_rewards, weights).sum(axis=1)
+        res = torch.mul(discnt_rewards, weights).sum(dim=1)
         return res
     
     

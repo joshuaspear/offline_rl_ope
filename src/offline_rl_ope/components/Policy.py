@@ -1,13 +1,38 @@
 from abc import ABCMeta, abstractmethod
-import numpy as np
 import torch
 from typing import Callable, List
 
+def postproc_pass(x:torch.Tensor)->torch.Tensor:
+    return x
+
+def postproc_cuda(x:torch.Tensor)->torch.Tensor:
+    return x.to("cpu")
+
+def preproc_cuda(x:torch.Tensor)->torch.Tensor:
+    return x.to("cuda")
+
+
+__all__ = [
+    "Policy", "GreedyDeterministic", "BehavPolicy", "LinearMixedPolicy"
+    ]
+
 class Policy(metaclass=ABCMeta):
     
-    def __init__(self, policy_class:Callable, collect_res:bool=False, 
-                 collect_act:bool=False) -> None:
-        self.policy_class = policy_class
+    def __init__(
+        self, 
+        policy_func:Callable[..., torch.Tensor], 
+        collect_res:bool=False, 
+        collect_act:bool=False, 
+        gpu:bool=False
+        ) -> None:
+        """_summary_
+
+        Args:
+            policy_func (Callable): Callable that excepts pytorch tensors
+            collect_res (bool, optional): _description_. Defaults to False.
+            collect_act (bool, optional): _description_. Defaults to False.
+        """
+        self.policy_func = policy_func
         self.policy_predictions = []
         self.policy_actions = []
         if collect_res:
@@ -19,6 +44,12 @@ class Policy(metaclass=ABCMeta):
             self.collect_act_func =  self.__cllct_act_true
         else:
             self.collect_act_func = self.__cllct_false
+        if gpu:
+            self.preproc_tens = preproc_cuda
+            self.postproc_tens = postproc_cuda
+        else:
+            self.preproc_tens = postproc_pass
+            self.postproc_tens = postproc_pass
         
     def __cllct_false(self, res):
         pass
@@ -49,43 +80,43 @@ class Policy(metaclass=ABCMeta):
 
 class BehavPolicy(Policy):
     
-    def __init__(self, policy_class, collect_res:bool=False, 
-                 collect_act:bool=False) -> None:
-        super().__init__(policy_class, collect_res=collect_res, 
-                         collect_act=collect_act)
+    def __init__(
+        self, 
+        policy_func:Callable[[torch.Tensor,torch.Tensor], torch.Tensor], 
+        collect_res:bool=False, 
+        collect_act:bool=False, 
+        gpu:bool=False
+        ) -> None:
+        super().__init__(policy_func, collect_res=collect_res, 
+                         collect_act=collect_act, gpu=gpu)
         
-    def __call__(self, state: torch.Tensor, action: torch.Tensor):
-        state = state.detach().numpy()
-        action = action.detach().numpy()
+    def __call__(self, state:torch.Tensor, action:torch.Tensor)->torch.Tensor:
         pre_dim = state.shape[0]
-        res = self.policy_class.eval_pdf(dep_vals=action, indep_vals=state)
-        res = torch.Tensor(res)
+        res = self.policy_func(y=action, x=state)
         res = res.view(pre_dim, -1)
         self.collect_res_fn(res)
         return res
         
 
-class D3RlPyDeterministic(Policy):
+class GreedyDeterministic(Policy):
     
     def __init__(
-        self, policy_class: Callable, collect_res:bool=False, 
-        collect_act:bool=False, gpu:bool=True, eps:float=0
+        self, 
+        policy_func:Callable[[torch.Tensor], torch.Tensor], 
+        collect_res:bool=False, 
+        collect_act:bool=False, 
+        gpu:bool=False, 
+        eps:float=0
         ) -> None:
-        super().__init__(policy_class, collect_res=collect_res, 
-                         collect_act=collect_act)
-        if gpu:
-            self.__preproc_tens = lambda x: x.to("cuda")
-            self.__postproc_tens = lambda x: x.to("cpu")
-        else:
-            self.__preproc_tens = lambda x: x
-            self.__postproc_tens = lambda x: x
+        super().__init__(policy_func, collect_res=collect_res, 
+                         collect_act=collect_act, gpu=gpu)
         self.__eps = eps
         
     
     def __call__(self, state: torch.Tensor, action: torch.Tensor)->torch.Tensor:
-        state = self.__preproc_tens(state)
-        greedy_action = self.policy_class(x=state).view(-1,1)
-        greedy_action = self.__postproc_tens(greedy_action)
+        state = self.preproc_tens(state)
+        greedy_action = self.policy_func(x=state).view(-1,1)
+        greedy_action = self.postproc_tens(greedy_action)
         self.collect_act_func(greedy_action)
         res = (greedy_action == action).all(dim=1, keepdim=True).int()
         res_eps_upper = res*(1-self.__eps)
@@ -96,11 +127,11 @@ class D3RlPyDeterministic(Policy):
     
 class LinearMixedPolicy:
     
-    def __init__(self, policy_classes:List[Policy], 
+    def __init__(self, policy_funcs:List[Policy], 
                  mixing_params:torch.Tensor) -> None:
         if sum(mixing_params) != 1:
             raise Exception("Mixing params must equal 1")
-        self.__policy_classes = policy_classes
+        self.__policy_funcs = policy_funcs
         self.__mixing_params = mixing_params
         self.__policy_predictions = []
     
@@ -108,9 +139,9 @@ class LinearMixedPolicy:
     def policy_predictions(self):
         return self.__policy_predictions
         
-    def __call__(self, state: torch.Tensor, action: torch.Tensor):
+    def __call__(self, state: torch.Tensor, action: torch.Tensor)->torch.Tensor:
         res = []
-        for pol in self.__policy_classes:
+        for pol in self.__policy_funcs:
             pol_out = pol(state=state, action=action)
             res.append(pol_out)
         res = torch.cat(res, dim=1)
