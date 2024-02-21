@@ -1,5 +1,6 @@
 Cython==0.29.33
-d3rlpy @ git+https://github.com/takuseno/d3rlpy.git
+d3rlpy==2.x
 numpy==1.21.5
 pytest==7.3.0
 pytest-mock==3.10.0
+scikit-learn
