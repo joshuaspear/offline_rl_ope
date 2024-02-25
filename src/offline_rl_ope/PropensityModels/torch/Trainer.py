@@ -1,5 +1,5 @@
+from abc import abstractmethod
 import torch
-import torch.nn as nn
 import numpy as np
 import pickle
 
@@ -48,6 +48,25 @@ class TorchPropensityTrainer(PropensityTrainer):
             pickle.dump(self, f)
         if self.gpu:
             self.to_gpu()
+    
+    @abstractmethod
+    def predict(
+        self, 
+        x:torch.Tensor, 
+        *args, 
+        **kwargs
+        ) -> torch.Tensor:
+        pass
+    
+    @abstractmethod
+    def predict_proba(
+        self, 
+        x: torch.Tensor, 
+        y: torch.Tensor, 
+        *args, 
+        **kwargs
+        ) -> torch.Tensor:
+        pass
     
         
                
