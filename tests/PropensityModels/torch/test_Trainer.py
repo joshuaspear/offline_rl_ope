@@ -80,6 +80,7 @@ class TorchClassTrainerTest(TestCase):
             )
         pred = trainer.predict(x=in_x)
         assert len(pred.shape) == 2
+        assert isinstance(pred, torch.Tensor)
         nt.assert_array_equal(
             pred.numpy(), res_predict_true.numpy()
             )
@@ -92,6 +93,7 @@ class TorchClassTrainerTest(TestCase):
             )
         pred = trainer.predict_proba(x=in_x,y=in_y)
         assert len(pred.shape) == 2
+        assert isinstance(pred, torch.Tensor)
         nt.assert_array_equal(
             pred.numpy(), res_predict_proba.numpy()
             )

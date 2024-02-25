@@ -105,7 +105,7 @@ class TorchClassTrainer(TorchPropensityTrainer):
         x = self.input_setup(x)
         self.estimator.eval()
         res = self.estimator(x)
-        res_out = res["out"].cpu().detach()
+        res_out = res["out"]
         n_rows = res_out.shape[0]
         n_out = res_out.shape[2]
         dim_0_sub = np.arange(0,n_rows)[:,None]
@@ -134,7 +134,7 @@ class TorchRegTrainer(TorchPropensityTrainer):
         x = self.input_setup(x)
         self.estimator.eval()
         res = self.estimator(x)
-        res = res["loc"].cpu().detach().numpy()
+        res = res["loc"]
         return res
     
     def predict_proba(
@@ -151,5 +151,5 @@ class TorchRegTrainer(TorchPropensityTrainer):
         self.estimator.eval()
         pred_res = self.estimator(x)
         d_f = self.dist_func(**pred_res)
-        res = torch.exp(d_f.log_prob(y)).cpu().detach().numpy()
+        res = torch.exp(d_f.log_prob(y))
         return res
