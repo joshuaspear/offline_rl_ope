@@ -34,10 +34,11 @@ class ISWeightCalculator:
             logger.debug("states.shape: {}".format(states.shape))
             logger.debug("actions.shape: {}".format(actions.shape))
             raise Exception("State and actions should have 2 dimensions")
-        behav_probs = self.__behav_policy(action=actions, 
-                                          state=states)
-        #logger.debug("behav_probs: {}".format(behav_probs))
-        eval_probs = eval_policy(action=actions, state=states)
+        with torch.no_grad():
+            behav_probs = self.__behav_policy(action=actions, 
+                                            state=states)
+            #logger.debug("behav_probs: {}".format(behav_probs))
+            eval_probs = eval_policy(action=actions, state=states)
         #logger.debug("eval_probs: {}".format(eval_probs))
         weight_array = eval_probs/behav_probs
         weight_array = weight_array.view(-1)

@@ -48,7 +48,7 @@ class ISEstimatorScorer(OPEEstimatorScorerBase, ISEstimator):
                            weights=self.cache[self.is_type].traj_is_weights, 
                            is_msk=self.cache.weight_msk, discount=self.discount
                            )
-        return res
+        return res.numpy()
 
 
 
