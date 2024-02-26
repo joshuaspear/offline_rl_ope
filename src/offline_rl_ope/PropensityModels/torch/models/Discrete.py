@@ -36,9 +36,9 @@ class Categorical(PropensityTorchMlpBase):
     def forward(self, x) -> PropensityTorchOutputType:
         for layer in self.layers:
             x = layer(x)
-        out = []
+        out:List[torch.Tensor] = []
         for head in self.out_layers:
             out_val = head(x)
             out.append(self.out_actvton(out_val)[:,:,None])
-        out = torch.concat(out, dim=2)
-        return {"out": out}
+        res = torch.concat(out, dim=2)
+        return {"out": res}

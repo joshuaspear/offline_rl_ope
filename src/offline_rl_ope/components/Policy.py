@@ -13,7 +13,7 @@ def preproc_cuda(x:torch.Tensor)->torch.Tensor:
 
 
 __all__ = [
-    "Policy", "GreedyDeterministic", "BehavPolicy", "LinearMixedPolicy"
+    "Policy", "GreedyDeterministic", "BehavPolicy"
     ]
 
 class Policy(metaclass=ABCMeta):
@@ -33,8 +33,8 @@ class Policy(metaclass=ABCMeta):
             collect_act (bool, optional): _description_. Defaults to False.
         """
         self.policy_func = policy_func
-        self.policy_predictions = []
-        self.policy_actions = []
+        self.policy_predictions:List[torch.Tensor] = []
+        self.policy_actions:List[torch.Tensor] = []
         if collect_res:
             self.collect_res_fn = self.__cllct_res_true
         else:
@@ -125,25 +125,3 @@ class GreedyDeterministic(Policy):
         self.collect_res_fn(res)
         return res
     
-class LinearMixedPolicy:
-    
-    def __init__(self, policy_funcs:List[Policy], 
-                 mixing_params:torch.Tensor) -> None:
-        if sum(mixing_params) != 1:
-            raise Exception("Mixing params must equal 1")
-        self.__policy_funcs = policy_funcs
-        self.__mixing_params = mixing_params
-        self.__policy_predictions = []
-    
-    @property
-    def policy_predictions(self):
-        return self.__policy_predictions
-        
-    def __call__(self, state: torch.Tensor, action: torch.Tensor)->torch.Tensor:
-        res = []
-        for pol in self.__policy_funcs:
-            pol_out = pol(state=state, action=action)
-            res.append(pol_out)
-        res = torch.cat(res, dim=1)
-        self.__policy_predictions.append(res)
-        return torch.sum(res*self.__mixing_params, dim=1, keepdim=True)

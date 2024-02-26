@@ -13,9 +13,9 @@ logger = logging.getLogger("offline_rl_ope")
 class ISWeightCalculator:
     def __init__(self, behav_policy:Policy) -> None:
         self.__behav_policy = behav_policy
-        self.is_weights = torch.empty(0)
-        self.weight_msk = torch.empty(0)
-        self.policy_actions = torch.empty(0)
+        self.is_weights:torch.Tensor = torch.empty(0)
+        self.weight_msk:torch.Tensor = torch.empty(0)
+        self.policy_actions:List[torch.Tensor] = [torch.empty(0)]
         
     def get_traj_w(self, states:torch.Tensor, actions:torch.Tensor, 
                    eval_policy:Policy)->torch.Tensor:
@@ -34,10 +34,11 @@ class ISWeightCalculator:
             logger.debug("states.shape: {}".format(states.shape))
             logger.debug("actions.shape: {}".format(actions.shape))
             raise Exception("State and actions should have 2 dimensions")
-        behav_probs = self.__behav_policy(action=actions, 
-                                          state=states)
-        #logger.debug("behav_probs: {}".format(behav_probs))
-        eval_probs = eval_policy(action=actions, state=states)
+        with torch.no_grad():
+            behav_probs = self.__behav_policy(action=actions, 
+                                            state=states)
+            #logger.debug("behav_probs: {}".format(behav_probs))
+            eval_probs = eval_policy(action=actions, state=states)
         #logger.debug("eval_probs: {}".format(eval_probs))
         weight_array = eval_probs/behav_probs
         weight_array = weight_array.view(-1)

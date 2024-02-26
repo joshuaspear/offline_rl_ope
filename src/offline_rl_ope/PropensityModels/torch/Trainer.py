@@ -1,5 +1,5 @@
+from abc import abstractmethod
 import torch
-import torch.nn as nn
 import numpy as np
 import pickle
 
@@ -49,6 +49,25 @@ class TorchPropensityTrainer(PropensityTrainer):
         if self.gpu:
             self.to_gpu()
     
+    @abstractmethod
+    def predict(
+        self, 
+        x:torch.Tensor, 
+        *args, 
+        **kwargs
+        ) -> torch.Tensor:
+        pass
+    
+    @abstractmethod
+    def predict_proba(
+        self, 
+        x: torch.Tensor, 
+        y: torch.Tensor, 
+        *args, 
+        **kwargs
+        ) -> torch.Tensor:
+        pass
+    
         
                
 class TorchClassTrainer(TorchPropensityTrainer):
@@ -78,9 +97,9 @@ class TorchClassTrainer(TorchPropensityTrainer):
         """
         x = self.input_setup(x)
         self.estimator.eval()
-        res = self.estimator(x)
+        propense_res = self.estimator(x)
         # Take max over values
-        res = torch.argmax(res["out"], dim=1, keepdim=False)
+        res = torch.argmax(propense_res["out"], dim=1, keepdim=False)
         return res
     
     def predict_proba(
@@ -105,7 +124,7 @@ class TorchClassTrainer(TorchPropensityTrainer):
         x = self.input_setup(x)
         self.estimator.eval()
         res = self.estimator(x)
-        res_out = res["out"].cpu().detach()
+        res_out = res["out"]
         n_rows = res_out.shape[0]
         n_out = res_out.shape[2]
         dim_0_sub = np.arange(0,n_rows)[:,None]
@@ -133,9 +152,8 @@ class TorchRegTrainer(TorchPropensityTrainer):
         ) -> torch.Tensor:
         x = self.input_setup(x)
         self.estimator.eval()
-        res = self.estimator(x)
-        res = res["loc"].cpu().detach().numpy()
-        return res
+        propense_res = self.estimator(x)
+        return propense_res["loc"]
     
     def predict_proba(
         self, 
@@ -151,5 +169,5 @@ class TorchRegTrainer(TorchPropensityTrainer):
         self.estimator.eval()
         pred_res = self.estimator(x)
         d_f = self.dist_func(**pred_res)
-        res = torch.exp(d_f.log_prob(y)).cpu().detach().numpy()
+        res = torch.exp(d_f.log_prob(y))
         return res
