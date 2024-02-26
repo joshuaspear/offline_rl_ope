@@ -49,7 +49,8 @@ class DiscreteValueByActionCallback(QueryCallbackBase):
             "values": total_values, 
             "actions":total_actions
             })
-        res = res.groupby(by="actions", as_index=False)["values"].mean()
+        res = res.groupby(by="actions")["values"].mean()
+        res = res.reset_index(drop=False)
         res_dict = {key:val for key,val in zip(res["actions"], res["values"])}
         res_dict = {
             key: (res_dict[key] if key in res_dict.keys() else np.nan) 

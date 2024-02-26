@@ -97,9 +97,9 @@ class TorchClassTrainer(TorchPropensityTrainer):
         """
         x = self.input_setup(x)
         self.estimator.eval()
-        res = self.estimator(x)
+        propense_res = self.estimator(x)
         # Take max over values
-        res = torch.argmax(res["out"], dim=1, keepdim=False)
+        res = torch.argmax(propense_res["out"], dim=1, keepdim=False)
         return res
     
     def predict_proba(
@@ -152,9 +152,8 @@ class TorchRegTrainer(TorchPropensityTrainer):
         ) -> torch.Tensor:
         x = self.input_setup(x)
         self.estimator.eval()
-        res = self.estimator(x)
-        res = res["loc"]
-        return res
+        propense_res = self.estimator(x)
+        return propense_res["loc"]
     
     def predict_proba(
         self, 
