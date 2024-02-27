@@ -24,7 +24,7 @@ class D3rlpyQlearnDM(DirectMethodBase):
     
     def get_q(self, state:torch.Tensor, action:torch.Tensor) -> torch.Tensor:
         values = torch.tensor(self.model.predict_value(
-            x=state.numpy(), action=action.numpy()))
+            x=state.cpu().numpy(), action=action.cpu().numpy()))
         return values
         
     def get_v(self, state:torch.Tensor) -> torch.Tensor:

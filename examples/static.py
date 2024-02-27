@@ -40,8 +40,8 @@ class GbtEst:
         self.estimator = estimator
     
     def __call__(self, y:torch.Tensor, x:torch.Tensor):
-        x = x.numpy()
-        y = y.numpy()
+        x = x.cpu().numpy()
+        y = y.cpu().numpy()
         probs = self.estimator.predict_proba(X=x)
         res = []
         for i,out_prob in enumerate(probs):
