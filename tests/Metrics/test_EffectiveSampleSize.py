@@ -23,6 +23,9 @@ class EffectiveSampleSizeTest(unittest.TestCase):
         assert len(weights) == 2
         denum = 1 + torch.var(weights)
         act_res = (num/denum).item()
-        metric = EffectiveSampleSize(is_obj=TestImportanceSampler())
-        pred_res = metric()
-        self.assertEqual(act_res,pred_res)
+        metric = EffectiveSampleSize(nan_if_all_0=True)
+        pred_res = metric(
+            weights=weight_test_res
+        )
+        tol = act_res/1000
+        np.testing.assert_allclose(pred_res, act_res, atol=tol)

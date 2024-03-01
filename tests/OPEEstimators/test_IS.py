@@ -58,7 +58,10 @@ class ISEstimatorTest(unittest.TestCase):
         pred_res = self.is_estimator.predict_traj_rewards(
             rewards=rewards, actions=[], states=[], weights=weight_test_res,
             discount=gamma, is_msk=msk_test_res)
-        test_res = np.multiply(reward_test_res.numpy(), weight_test_res.numpy())
+        test_res = np.multiply(
+            reward_test_res.numpy(), 
+            weight_test_res.numpy()/weight_test_res.shape[0]
+            )
         test_res=test_res.sum(axis=1)
         #test_res = test_res.sum(axis=1).mean()
         tol = test_res.mean()/1000

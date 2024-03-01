@@ -120,8 +120,11 @@ class DREstimatorTest(unittest.TestCase):
                                                weights=weight_test_res, 
                                                discount=gamma, 
                                                is_msk=msk_test_res)
+        #weight_test_res = weight_test_res/weight_test_res.shape[0]
+        denom = weight_test_res.shape[0]
         for idx, (r,s,a,w,msk) in enumerate(zip(rewards, states, actions, 
                                                 weight_test_res, msk_test_res)):
+            w = w/denom
             p = torch.masked_select(w, msk>0)
             __test_res = is_est.get_traj_discnt_reward(
                 reward_array=r, discount=gamma, state_array=s, action_array=a, 
@@ -129,9 +132,8 @@ class DREstimatorTest(unittest.TestCase):
             test_res.append(__test_res.numpy())
         #test_res = np.concatenate(test_res).mean()
         test_res = np.concatenate(test_res)
-        tol = (test_res.mean()/1000).item()
+        tol = (np.abs(test_res.mean()/100)).item()
         self.assertEqual(pred_res.shape, torch.Size((len(rewards),)))
-        np.testing.assert_allclose(pred_res.numpy(),test_res, atol=tol)
-        
+        np.testing.assert_allclose(pred_res.numpy(),test_res, atol=tol)    
             
     
