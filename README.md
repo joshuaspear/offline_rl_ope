@@ -1,6 +1,7 @@
 # offline_rl_ope (BETA RELEASE)
 
 **WARNING**
+- Per-decision weighted importance sampling was incorrectly implemented in versions < 5.X
 - Weighted importance sampling was incorrectly implemented in versions 1.X.X and 2.1.X, 2.2.X
 - Unit testing currently only running in Python 3.11. 3.10 will be supported in the future
 - Only 1 dimensional discrete action spaces are currently supported!
@@ -88,6 +89,16 @@ If importance sampling based methods are evaluating to 0, consider visualising t
 The different kinds of importance samples can also be visualised by querying the ```traj_is_weights``` attribute of a given ```ImportanceSampler``` object. If for example, vanilla importance sampling is being used and the samples are not ```NaN``` or ```Inf``` then visualising the ```traj_is_weights``` may provide insight. In particular, IS weights will tend to inifinity when the evaluation policy places large density on an action in comparison to the behaviour policy.
 
 ### Release log
+#### 5.0.0
+* Correctly implemented per-decision weighted importance sampling
+* Expanded the different types of weights that can be implemented based on:
+  * http://proceedings.mlr.press/v48/jiang16.pdf: Per-decision weights are defined as the average weight at a given timepoint. This results in a different denominator for different timepoints. This is implemented with the following ```WISWeightNorm(avg_denom=True)```
+  * https://scholarworks.umass.edu/cgi/viewcontent.cgi?article=1079&context=cs_faculty_pubs: Per-decision weights are defined as the sum of discounted weights across all timesteps. This is implemented with the following ```WISWeightNorm(discount=discount_value)```
+  * Combinations of different weights can be easily implemented for example 'average discounted weights' ```WISWeightNorm(discount=discount_value, avg_denom=True)``` however, these do not necessaily have backing from literature.
+* EffectiveSampleSize metric optinally returns nan if all weights are 0
+* Bug fixes:
+  * Fix bug when running on cuda where tensors were not being pushed to CPU
+  * Improved static typing
 #### 4.0.0
 * Predefined propensity models including:
   * Generic feedforward MLP for continuous and discrete action spaces built in PyTorch

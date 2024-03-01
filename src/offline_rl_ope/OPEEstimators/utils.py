@@ -9,25 +9,52 @@ class WeightNorm(metaclass=ABCMeta):
     def __call__(self, traj_is_weights:torch.Tensor, is_msk:torch.Tensor
                  ) -> torch.Tensor:
         pass
+
+# is_msk.sum(axis=0, keepdim=True) is taken as the 
+#         denominator since it is required to take the average over valid time t 
+#         importance ratios. This may differ for different episodes.
+# ref: http://proceedings.mlr.press/v48/jiang16.pdf
+
+
+class WISWeightNorm(WeightNorm):
     
-class WISNormWeights(WeightNorm):
-    
-    def __init__(self, smooth_eps:float=0.0, *args, **kwargs) -> None:
+    def __init__(
+        self, 
+        smooth_eps:float=0.0,
+        avg_denom:bool=False,
+        discount:float=1,
+        *args, 
+        **kwargs
+        ) -> None:
         self.smooth_eps = smooth_eps
+        self.avg_denom = avg_denom
+        self.discount = discount
     
-    def calc_norm(self, traj_is_weights:torch.Tensor, is_msk:torch.Tensor
-                  ) -> torch.Tensor:
-        """Calculates the denominator for weighted importance sampling i.e.
-        w_{t} = 1/n sum_{i=1}^{n} p_{1:t}. Note, if traj_is_weights represent
-        vanilla IS samples then this will be w_{t} = 1/n sum_{i=1}^{n} p_{1:H}
-        for all samples. is_msk.sum(axis=0, keepdim=True) is taken as the 
-        denominator since it is required to take the average over valid time t 
-        importance ratios. This may differ for different episodes.
-        ref: http://proceedings.mlr.press/v48/jiang16.pdf
+    def calc_norm(
+        self, 
+        traj_is_weights:torch.Tensor, 
+        is_msk:torch.Tensor
+        ) -> torch.Tensor:
+        """Calculates the denominator for weighted importance sampling.
         smooth_eps prevents nan values occuring in instances where there exists
         valid time t importance ratios however, these are all 0. This should
         be set as small as possible. 
-
+        avg_denom: defines the denominator as the average weight for time t
+        as per http://proceedings.mlr.press/v48/jiang16.pdf
+        
+        Note:
+        - If traj_is_weights represents vanilla IS samples then:
+            - The denominator will be w_{t} = sum_{i=1}^{n} p_{1:H} for all 
+            samples.
+            - If avg_denom is set to true, the denominator will be 
+            w_{t} = 1/n_{t} sum_{i=1}^{n} p_{1:H} where n_{t} is the number of 
+            trajectories of at least length, t.
+        - If traj_is_weights represents PD IS samples then: 
+            - The denominator will be w_{t} = sum_{i=1}^{n} p_{1:t}.
+            - If avg_denom is set to true, the denominator will be 
+            w_{t} = 1/n_{t} sum_{i=1}^{n} p_{1:t} where n_{t} is the number of 
+            trajectories of at least length, t. This definition aligns with 
+            http://proceedings.mlr.press/v48/jiang16.pdf
         Args:
             traj_is_weights (torch.Tensor): (# trajectories, max(traj_length)) 
                 Tensor. traj_is_weights[i,j] defines the jth timestep propensity 
@@ -40,11 +67,19 @@ class WISNormWeights(WeightNorm):
             torch.Tensor: Tensor of dimension (# trajectories, 1) defining the 
             normalisation value for each timestep
         """
-        denom:torch.Tensor = traj_is_weights.sum(dim=0, keepdim=True)
-        denom = (denom+self.smooth_eps)/(
-            is_msk.sum(dim=0, keepdim=True)+self.smooth_eps)
+        discnt_tens = torch.full(traj_is_weights.shape, self.discount)
+        discnt_pows = torch.arange(0, traj_is_weights.shape[1])[None,:].repeat(
+            traj_is_weights.shape[0],1)
+        discnt_tens = torch.pow(discnt_tens,discnt_pows)
+        traj_is_weights = torch.mul(traj_is_weights,discnt_tens)
+        denom = (
+            traj_is_weights.sum(dim=0, keepdim=True) + self.smooth_eps
+            )
+        if self.avg_denom:
+            denom = denom/(
+                is_msk.sum(dim=0, keepdim=True)+self.smooth_eps)
         return denom
-    
+
     def __call__(self, traj_is_weights:torch.Tensor, is_msk:torch.Tensor
                  ) -> torch.Tensor:
         """Normalised propensity weights according to 
@@ -63,10 +98,12 @@ class WISNormWeights(WeightNorm):
             with normalised weights
         """
         denom = self.calc_norm(traj_is_weights=traj_is_weights, is_msk=is_msk)
-        res = traj_is_weights/(denom+self.smooth_eps)
+        res = traj_is_weights/denom
         return res
+
+
     
-class NormWeightsPass(WeightNorm):
+class VanillaNormWeights(WeightNorm):
     
     def __init__(self, *args, **kwargs) -> None:
         pass
@@ -84,9 +121,11 @@ class NormWeightsPass(WeightNorm):
                 ith trajectory was observed
 
         Returns:
-            torch.Tensor: Identical tensor to traj_is_weights
+            torch.Tensor: traj_is_weights with element wise average
         """
-        return traj_is_weights
+        # The first dimension defines the number of trajectories and we require
+        # the average over trajectories
+        return traj_is_weights/traj_is_weights.shape[0]
 
 def clip_weights(
     traj_is_weights:torch.Tensor, 

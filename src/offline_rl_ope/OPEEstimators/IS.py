@@ -3,7 +3,7 @@ import torch
 from typing import Any, Dict, List
 
 from .utils import (
-    WISNormWeights, NormWeightsPass, WeightNorm,
+    WISWeightNorm, VanillaNormWeights, WeightNorm,
     clip_weights_pass as cwp, 
     clip_weights as cw
     )
@@ -23,9 +23,9 @@ class ISEstimatorBase(OPEEstimatorBase):
         ) -> None:
         super().__init__(cache_traj_rewards)
         if norm_weights:    
-            _norm_weights = WISNormWeights(**norm_kwargs)
+            _norm_weights = WISWeightNorm(**norm_kwargs)
         else:
-            _norm_weights = NormWeightsPass(**norm_kwargs)
+            _norm_weights = VanillaNormWeights(**norm_kwargs)
         self.norm_weights:WeightNorm = _norm_weights
         self.clip = clip
         if clip_weights:
