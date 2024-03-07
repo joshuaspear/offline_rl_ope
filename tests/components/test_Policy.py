@@ -14,7 +14,7 @@ logger = logging.getLogger("offline_rl_ope")
 
 eps = 0.001
 
-class D3RlPyDeterministicTest(unittest.TestCase):
+class GreedyDeterministicTest(unittest.TestCase):
 
     def setUp(self) -> None:
         def __mock_return(x):
@@ -27,6 +27,26 @@ class D3RlPyDeterministicTest(unittest.TestCase):
         self.policy_0_eps = GreedyDeterministic(policy_func, gpu=False)
         self.policy_001_eps = GreedyDeterministic(
             policy_func, gpu=False, eps=eps)
+        
+        def __mock_return_multi_dim(x):
+            lkp = {
+                str(torch.Tensor(state)):torch.concat(
+                    [torch.Tensor(act),torch.abs(1-torch.Tensor(act))],
+                    dim=1
+                    ) 
+                for state,act in zip(test_state_vals, test_eval_action_vals)
+                }
+            return lkp[str(x)]
+        policy_func_multi_dim = MagicMock(side_effect=__mock_return_multi_dim)
+        self.policy_0_eps_multi_dim = GreedyDeterministic(
+            policy_func_multi_dim, 
+            gpu=False
+            )
+        self.policy_001_eps_multi_dim = GreedyDeterministic(
+            policy_func_multi_dim, 
+            gpu=False, 
+            eps=eps
+            )
     
     def test___call__0_eps(self):
         test_pred = []
@@ -36,7 +56,7 @@ class D3RlPyDeterministicTest(unittest.TestCase):
                for x,y in zip(__test_action_vals, __test_eval_action_vals)]
         test_res = np.concatenate(test_res).squeeze()
         tollerance = test_res.mean()/1000    
-        for s,a in zip(test_state_vals, test_action_vals):
+        for s,a in zip(test_state_vals, __test_action_vals):
             s = torch.Tensor(s)
             a = torch.Tensor(a)
             pred = self.policy_0_eps(state=s, action=a)
@@ -56,10 +76,67 @@ class D3RlPyDeterministicTest(unittest.TestCase):
             test_res == 1, 1-eps, 0+eps
         )
         tollerance = test_res.mean()/1000    
-        for s,a in zip(test_state_vals, test_action_vals):
+        for s,a in zip(test_state_vals, __test_action_vals):
             s = torch.Tensor(s)
             a = torch.Tensor(a)
             pred = self.policy_001_eps(state=s, action=a)
+            self.assertEqual(pred.shape, torch.Size((s.shape[0],1)))
+            test_pred.append(pred.squeeze().numpy())
+        test_pred = np.concatenate(test_pred)
+        np.testing.assert_allclose(test_pred, test_res, atol=tollerance)
+
+    def test___call__0_eps_multi_dim(self):
+            test_pred = []
+            __test_action_vals = [
+                np.concatenate(
+                    [np.array(i),np.abs(1-np.array(i))],
+                    axis=1
+                    ) for i in test_action_vals
+                ]
+            __test_eval_action_vals = [
+                np.concatenate(
+                    [np.array(i),np.abs(1-np.array(i))],
+                    axis=1
+                    ) for i in test_eval_action_vals
+                ]
+            test_res = [(x==y).all(axis=1).astype(int) 
+                for x,y in zip(__test_action_vals, __test_eval_action_vals)]
+            test_res = np.concatenate(test_res).squeeze()
+            tollerance = test_res.mean()/1000    
+            for s,a in zip(test_state_vals, __test_action_vals):
+                s = torch.Tensor(s)
+                a = torch.Tensor(a)
+                pred = self.policy_0_eps_multi_dim(state=s, action=a)
+                self.assertEqual(pred.shape, torch.Size((s.shape[0],1)))
+                test_pred.append(pred.squeeze().numpy())
+            test_pred = np.concatenate(test_pred)
+            np.testing.assert_allclose(test_pred, test_res, atol=tollerance)
+            
+    def test___call__0001_eps_multi_dim(self):
+        test_pred = []
+        __test_action_vals = [
+            np.concatenate(
+                [np.array(i),np.abs(1-np.array(i))],
+                axis=1
+                ) for i in test_action_vals
+            ]
+        __test_eval_action_vals = [
+            np.concatenate(
+                [np.array(i),np.abs(1-np.array(i))],
+                axis=1
+                ) for i in test_eval_action_vals
+            ]
+        test_res = [(x==y).all(axis=1).astype(int) 
+            for x,y in zip(__test_action_vals, __test_eval_action_vals)]
+        test_res = np.concatenate(test_res).squeeze()
+        test_res = np.where(
+            test_res == 1, 1-eps, 0+eps
+        )
+        tollerance = test_res.mean()/1000    
+        for s,a in zip(test_state_vals, __test_action_vals):
+            s = torch.Tensor(s)
+            a = torch.Tensor(a)
+            pred = self.policy_001_eps_multi_dim(state=s, action=a)
             self.assertEqual(pred.shape, torch.Size((s.shape[0],1)))
             test_pred.append(pred.squeeze().numpy())
         test_pred = np.concatenate(test_pred)
