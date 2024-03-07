@@ -115,7 +115,7 @@ class GreedyDeterministic(Policy):
     
     def __call__(self, state: torch.Tensor, action: torch.Tensor)->torch.Tensor:
         state = self.preproc_tens(state)
-        greedy_action = self.policy_func(x=state).view(-1,1)
+        greedy_action = self.policy_func(x=state)
         greedy_action = self.postproc_tens(greedy_action)
         self.collect_act_func(greedy_action)
         res = (greedy_action == action).all(dim=1, keepdim=True).int()
