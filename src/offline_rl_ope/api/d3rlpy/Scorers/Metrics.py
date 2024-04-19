@@ -28,7 +28,7 @@ class ISMetricScorer(OPEEstimatorScorerBase):
         algo: QLearningAlgoProtocol, 
         dataset: ReplayBuffer
         )->float:
-        ...
+        pass
         
 class ValidWeightsPropScorer(ISMetricScorer):
     
