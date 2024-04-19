@@ -1,11 +1,12 @@
 import torch
 import numpy as np
+from .MetricBase import MetricBase
 
 __all__ = [
     "EffectiveSampleSize"
 ]
 
-class EffectiveSampleSize:
+class EffectiveSampleSize(MetricBase):
     
     def __init__(self, nan_if_all_0:bool=True) -> None:
         self.__nan_if_all_0 = nan_if_all_0

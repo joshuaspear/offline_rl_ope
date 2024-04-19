@@ -1,33 +1,41 @@
 import torch
-
-from ..components.ImportanceSampler import ImportanceSampler
+from .MetricBase import MetricBase
 
 __all__ = [
     "ValidWeightsProp"
 ]
 
-class ValidWeightsProp: 
+class ValidWeightsProp(MetricBase): 
     
     def __init__(
         self, 
-        is_obj:ImportanceSampler, 
         min_w:float, 
         max_w:float
         ) -> None:
-        self.__is_obj = is_obj
         self.__min_w = min_w
         self.__max_w = max_w
     
-    def __valid_weights(self) -> float:
+    def __valid_weights(
+        self, 
+        weights:torch.Tensor, 
+        weight_msk:torch.Tensor
+        ) -> float:
         vw_mask = (
-            (self.__is_obj.traj_is_weights > self.__min_w) & 
-            (self.__is_obj.traj_is_weights < self.__max_w)
+            (weights > self.__min_w) & 
+            (weights < self.__max_w)
             )
         vw_num = torch.sum(input=vw_mask, dim=1)
         vw_denom = torch.sum(
-            input=self.__is_obj.is_weight_calc.weight_msk, dim=1
+            input=weight_msk, dim=1
             )
         return torch.mean(vw_num/vw_denom).item()
         
-    def __call__(self) -> float:
-        return self.__valid_weights()
+    def __call__(
+        self, 
+        weights:torch.Tensor, 
+        weight_msk:torch.Tensor
+        ) -> float:
+        return self.__valid_weights(
+            weights=weights, 
+            weight_msk=weight_msk
+            )
