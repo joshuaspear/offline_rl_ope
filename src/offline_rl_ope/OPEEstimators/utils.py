@@ -27,7 +27,7 @@ class WISWeightNorm(WeightNorm):
         self, 
         smooth_eps:float=0.0,
         avg_denom:bool=False,
-        discount:float=1,
+        discount:float=1.0,
         *args, 
         **kwargs
         ) -> None:

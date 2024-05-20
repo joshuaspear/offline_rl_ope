@@ -1,7 +1,9 @@
 import unittest
+from unittest.mock import MagicMock
 import torch
 import numpy as np
 import copy
+from offline_rl_ope.components.Policy import Policy
 from offline_rl_ope.components.ImportanceSampler import (
     VanillaIS, PerDecisionIS, ISWeightCalculator
     )
@@ -21,7 +23,7 @@ test_act_inidiv_rew = [
     np.array([-1, -1*0.99, -1*(np.power(0.99,2))])
     ]
 
-for test_conf in [sdat,ddat,ddat]:
+for test_conf in [sdat,ddat,bdat]:
     test_act_norm_conts = [val.prod() for val in test_conf.test_act_indiv_weights]
 
     test_act_pd_weights = [val.cumprod() for val in test_conf.test_act_indiv_weights]
@@ -58,9 +60,6 @@ for test_conf in [sdat,ddat,ddat]:
     #         test_act_losses_clip.append(w*r)
     # test_act_loss_clip = sum(test_act_losses_clip).item()
 
-    class TestEvalPolicy:
-        pass
-
     class TestPolicy:
         
         def __init__(self, values) -> None:
@@ -80,7 +79,9 @@ for test_conf in [sdat,ddat,ddat]:
         def __init__(self) -> None:
             self.is_weights = test_conf.weight_test_res
             self.is_msk = test_conf.msk_test_res
-            
+
+
+    eval_policy = MagicMock(spec=Policy)
 
 
     class ISWeightCalculatorTest(unittest.TestCase):

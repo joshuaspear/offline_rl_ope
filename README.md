@@ -10,7 +10,7 @@
 
 ### Testing progress
 - [x] components/
-  - [x] ImportanceSampler.py
+  - [x] ImportanceSampler.py (except runtime check for policy class (forthcoming))
   - [x] Policy.py
 - [x] OPEEstimation
   - [x] IS.py

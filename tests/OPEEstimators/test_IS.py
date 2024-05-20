@@ -19,7 +19,7 @@ for test_conf in [sdat,ddat,bdat]:
     class ISEstimatorTest(unittest.TestCase):
         
         def setUp(self) -> None:
-            self.is_estimator = ISEstimator(norm_weights=False, clip=None)
+            self.is_estimator = ISEstimator(norm_weights=False)
         
         
         def test_get_traj_discnt_reward(self):

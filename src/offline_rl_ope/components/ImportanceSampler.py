@@ -10,7 +10,7 @@ from .. import logger
 
 class ISWeightCalculator:
     def __init__(self, behav_policy:Policy) -> None:
-        assert isinstance(behav_policy,Policy)
+        #assert isinstance(behav_policy,Policy)
         self.__behav_policy = behav_policy
         self.is_weights:torch.Tensor = torch.empty(0)
         self.weight_msk:torch.Tensor = torch.empty(0)
@@ -41,7 +41,7 @@ class ISWeightCalculator:
         check_array_dim(actions,2)
         assert isinstance(states, torch.Tensor)
         assert isinstance(actions, torch.Tensor)
-        assert isinstance(eval_policy, Policy)
+        #assert isinstance(eval_policy, Policy)
         
         with torch.no_grad():
             behav_probs = self.__behav_policy(
@@ -88,7 +88,7 @@ class ISWeightCalculator:
                 ith trajectory was observed
         """
         assert len(states) == len(actions)
-        assert isinstance(eval_policy, Policy)
+        #assert isinstance(eval_policy, Policy)
         # weight_res = torch.zeros(size=(len(states),h))
         # weight_msk = torch.zeros(size=(len(states),h))
         weight_res_lst:List[torch.Tensor] = []
