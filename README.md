@@ -41,8 +41,9 @@ Basic unit testing has been implemented for all the core functionality of the pa
 
 #### Main user assumptions of the project
 * Users require smaller workloads
-* Users should be able to easily implment new OPE methods using the importance sampling classes provided
-* When developing models, users may want to run several different OPE methods e.g., per-decision IS, per-decision weight IS etc. These different methods fundamentally utilise the same set of IS weights. The library has been developed to efficiently cache these IS weights, significantly reducing the overhead of incremental OPE metrics whilst adding no overhead if only a single OPE method is required. 
+* Users should be able to easily implement new OPE methods using the importance sampling classes provided
+* When developing models, users may want to run several different OPE methods e.g., per-decision IS, per-decision weight IS etc. These different methods fundamentally utilise the same set of IS weights. The library has been developed to efficiently cache these IS weights, significantly reducing the overhead of incremental OPE metrics whilst adding no overhead if only a single OPE method is required.
+* Users only require evaluation of discrete action spaces
 
 #### OPE methods
 * Importance sampling:
@@ -89,7 +90,7 @@ If importance sampling based methods are evaluating to 0, consider visualising t
 The different kinds of importance samples can also be visualised by querying the ```traj_is_weights``` attribute of a given ```ImportanceSampler``` object. If for example, vanilla importance sampling is being used and the samples are not ```NaN``` or ```Inf``` then visualising the ```traj_is_weights``` may provide insight. In particular, IS weights will tend to inifinity when the evaluation policy places large density on an action in comparison to the behaviour policy.
 
 ### Release log
-#### 5.0.1 (Upcoming)
+#### 5.0.1
 * Fixed bug where GreedyDeterministic couldn't handle multi-dimensional action spaces
 #### 5.0.0
 * Correctly implemented per-decision weighted importance sampling

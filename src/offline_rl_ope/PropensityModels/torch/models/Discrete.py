@@ -33,7 +33,10 @@ class Categorical(PropensityTorchMlpBase):
             ))
         self.out_actvton = nn.Sigmoid()
         
-    def forward(self, x) -> PropensityTorchOutputType:
+    def forward(
+        self, 
+        x:torch.Tensor
+        ) -> PropensityTorchOutputType:
         for layer in self.layers:
             x = layer(x)
         out:List[torch.Tensor] = []

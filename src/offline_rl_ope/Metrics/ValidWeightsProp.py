@@ -1,5 +1,7 @@
 import torch
 from .MetricBase import MetricBase
+from ..RuntimeChecks import check_array_dim
+
 
 __all__ = [
     "ValidWeightsProp"
@@ -20,6 +22,11 @@ class ValidWeightsProp(MetricBase):
         weights:torch.Tensor, 
         weight_msk:torch.Tensor
         ) -> float:
+        assert isinstance(weights,torch.Tensor)
+        assert isinstance(weight_msk,torch.Tensor)
+        check_array_dim(weights,2)
+        check_array_dim(weight_msk,2)
+        assert weights.shape == weight_msk.shape
         vw_mask = (
             (weights > self.__min_w) & 
             (weights < self.__max_w)

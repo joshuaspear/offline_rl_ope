@@ -19,6 +19,9 @@ class MultiOutputMultiClassTrainer(PropensityTrainer):
         estimator:MultiOutputClassifier, 
         epsilon_pr:float=0.0000001
         ) -> None:
+        assert len(class_mins) == len(class_maxs)
+        assert isinstance(estimator,MultiOutputClassifier)
+        assert isinstance(epsilon_pr,float)
         if not isinstance(estimator, MultiOutputClassifier):
             raise Exception
         super().__init__()
@@ -27,24 +30,9 @@ class MultiOutputMultiClassTrainer(PropensityTrainer):
         self.classes_def = []
         for mn,mx in zip(class_mins, class_maxs):
             self.classes_def.append(np.arange(mn, mx))
-        #self.__fitted_cls:List[np.array] = [np.empty(0)]*len(self.classes_def)
         self.__fitted_cls:List[NDArray] = []
         
         
-    # def fit(
-    #     self, 
-    #     x, 
-    #     y, 
-    #     *args, **kwargs)->MultiOutputClassifier:
-    #     try:
-    #         self.fitted_cls = [np.unique(y[:,i]) for i in range(y.shape[1])]
-    #     except IndexError as e:
-    #         if len(y.shape) != 2:
-    #             raise Exception("y must be 2 dimensional")
-    #         else:
-    #             raise e
-    #     res = self.estimator.fit(X=x, Y=y, *args, **kwargs)
-    
     @staticmethod
     def __add_ms_cols(
         in_arr:Float32NDArray, 
@@ -52,6 +40,10 @@ class MultiOutputMultiClassTrainer(PropensityTrainer):
         fit_cls:NDArray, 
         in_val:float
         )->Float32NDArray:
+        assert isinstance(in_arr,Float32NDArray)
+        assert isinstance(clas_def,Float32NDArray)
+        assert isinstance(fit_cls,Float32NDArray)
+        assert isinstance(in_val,float)
         if len(fit_cls) == 1:
             # When there is only one class, the predict_proba outputs
             # P(X = 1) and P(X \neq 1)
@@ -71,6 +63,9 @@ class MultiOutputMultiClassTrainer(PropensityTrainer):
         *args, 
         **kwargs
         ) -> Float32NDArray:
+        assert isinstance(x,Float32NDArray)
+        assert isinstance(y,Float32NDArray)
+        assert x.shape[0] == y.shape[0]
         res = self.estimator.predict_proba(X=x, *args, **kwargs)
         probs = [
             self.__add_ms_cols(y,c_d,f_c, self.epsilon_pr) 
@@ -96,7 +91,13 @@ class MultiOutputMultiClassTrainer(PropensityTrainer):
         res = np.concatenate(res, axis=0).prod(axis=0)
         return res
     
-    def predict(self, x:Float32NDArray, *args, **kwargs)->Float32NDArray:
+    def predict(
+        self, 
+        x:Float32NDArray, 
+        *args, 
+        **kwargs
+        )->Float32NDArray:
+        assert isinstance(x,Float32NDArray)
         return self.estimator.predict(X=x, *args, **kwargs)
     
     def save(self, path:str) -> None:

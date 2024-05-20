@@ -33,7 +33,10 @@ class FullGuassian(PropensityTorchMlpBase):
             out_features=sd_out_dim
         )
         
-    def forward(self, x) -> PropensityTorchOutputType:
+    def forward(
+        self, 
+        x:torch.Tensor
+        ) -> PropensityTorchOutputType:
         for layer in self.layers:
             x = layer(x)
         m_out = self.m_layer(x)

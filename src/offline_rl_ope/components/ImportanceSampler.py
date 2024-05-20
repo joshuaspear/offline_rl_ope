@@ -4,21 +4,24 @@ from typing import Dict, List, Tuple
 import torch
 from torch.nn.functional import pad
 
+from ..RuntimeChecks import check_array_dim, check_array_shape
 from .Policy import Policy
-
-
-logger = logging.getLogger("offline_rl_ope")
-
+from .. import logger
 
 class ISWeightCalculator:
     def __init__(self, behav_policy:Policy) -> None:
+        assert isinstance(behav_policy,Policy)
         self.__behav_policy = behav_policy
         self.is_weights:torch.Tensor = torch.empty(0)
         self.weight_msk:torch.Tensor = torch.empty(0)
         self.policy_actions:List[torch.Tensor] = [torch.empty(0)]
         
-    def get_traj_w(self, states:torch.Tensor, actions:torch.Tensor, 
-                   eval_policy:Policy)->torch.Tensor:
+    def get_traj_w(
+        self, 
+        states:torch.Tensor, 
+        actions:torch.Tensor, 
+        eval_policy:Policy
+        )->torch.Tensor:
         """Function to calculate the timestep IS weights over a trajectory i.e., 
         for each timestep (t) Tensor(\pi_{e}(a_{t}|s_{t})/\pi_{b}(a_{t}|s_{t}))
         Args:
@@ -30,25 +33,39 @@ class ISWeightCalculator:
             torch.Tensor: Tensor of dimension (traj_length) defining the 
             propensity weights for the input trajectory
         """
-        if (len(states.shape) != 2) | (len(actions.shape) != 2):
-            logger.debug("states.shape: {}".format(states.shape))
-            logger.debug("actions.shape: {}".format(actions.shape))
-            raise Exception("State and actions should have 2 dimensions")
+        # if (len(states.shape) != 2) | (len(actions.shape) != 2):
+        #     logger.debug("states.shape: {}".format(states.shape))
+        #     logger.debug("actions.shape: {}".format(actions.shape))
+        #     raise Exception("State and actions should have 2 dimensions")
+        check_array_dim(states,2)
+        check_array_dim(actions,2)
+        assert isinstance(states, torch.Tensor)
+        assert isinstance(actions, torch.Tensor)
+        assert isinstance(eval_policy, Policy)
+        
         with torch.no_grad():
-            behav_probs = self.__behav_policy(action=actions, 
-                                            state=states)
+            behav_probs = self.__behav_policy(
+                action=actions, state=states
+                )
+            check_array_dim(behav_probs,2)
+            assert behav_probs.shape[1] == 1
             #logger.debug("behav_probs: {}".format(behav_probs))
             eval_probs = eval_policy(action=actions, state=states)
+            check_array_dim(eval_probs,2)
+            assert eval_probs.shape[1] == 1
+            assert behav_probs.shape == eval_probs.shape 
         #logger.debug("eval_probs: {}".format(eval_probs))
         weight_array = eval_probs/behav_probs
         weight_array = weight_array.view(-1)
         #logger.debug("weight_array: {}".format(weight_array))
         return weight_array
     
-    def get_dataset_w(self, states:List[torch.Tensor], 
-                      actions:List[torch.Tensor], 
-                      eval_policy:Policy
-                      )->Tuple[torch.Tensor, torch.Tensor]:
+    def get_dataset_w(
+        self, 
+        states:List[torch.Tensor], 
+        actions:List[torch.Tensor], 
+        eval_policy:Policy
+        )->Tuple[torch.Tensor, torch.Tensor]:
         """_summary_
 
         Args:
@@ -71,14 +88,19 @@ class ISWeightCalculator:
                 ith trajectory was observed
         """
         assert len(states) == len(actions)
+        assert isinstance(eval_policy, Policy)
         # weight_res = torch.zeros(size=(len(states),h))
         # weight_msk = torch.zeros(size=(len(states),h))
         weight_res_lst:List[torch.Tensor] = []
         weight_msk_lst:List[torch.Tensor] = []
         h = 0
         for i, (s,a) in enumerate(zip(states, actions)):
-            weight = self.get_traj_w(states=s, actions=a, 
-                                     eval_policy=eval_policy) 
+            weight = self.get_traj_w(
+                states=s, 
+                actions=a, 
+                eval_policy=eval_policy
+                )
+            assert len(weight.shape) == 1 
             #weight_res_lst[i,:len(weight)] = weight
             weight_res_lst.append(weight)
             __h = len(weight)
@@ -99,11 +121,20 @@ class ISWeightCalculator:
         weight_msk = torch.stack(weight_msk_lst)
         return weight_res, weight_msk
     
-    def update(self, states:List[torch.Tensor], actions:List[torch.Tensor], 
-               eval_policy:Policy):
-        self.is_weights, self.weight_msk = self.get_dataset_w(
+    def update(
+        self, 
+        states:List[torch.Tensor], 
+        actions:List[torch.Tensor], 
+        eval_policy:Policy
+        ):
+        _is_weights, _weight_msk = self.get_dataset_w(
             states=states, actions=actions, eval_policy=eval_policy)
+        check_array_dim(_is_weights,2)
+        check_array_dim(_weight_msk,2)
+        assert len(eval_policy.policy_actions) == len(actions)
         self.policy_actions = eval_policy.policy_actions
+        self.is_weights = _is_weights
+        self.weight_msk = _weight_msk
 
     def flush(self):
         self.is_weights = torch.empty(0)
@@ -152,6 +183,8 @@ class VanillaIS(ImportanceSampler):
         is_weights:torch.Tensor, 
         weight_msk:torch.Tensor
         )->torch.Tensor:
+        assert isinstance(is_weights,torch.Tensor)
+        assert isinstance(weight_msk,torch.Tensor)
         __orig_dim = is_weights.shape
         # Convert missing timesteps in trajectories from 0 to 1 otherwise prod
         # will be 0 for trjectories without the max number of timesteps
@@ -160,6 +193,7 @@ class VanillaIS(ImportanceSampler):
         is_weights = is_weights.expand(__orig_dim)
         # Convert missing timesteps in trajectories back to 0
         is_weights = is_weights*weight_msk
+        check_array_shape(is_weights, __orig_dim)
         return is_weights
 
 class PerDecisionIS(ImportanceSampler):
@@ -169,8 +203,12 @@ class PerDecisionIS(ImportanceSampler):
         is_weights:torch.Tensor,
         weight_msk:torch.Tensor
         ):
+        assert isinstance(is_weights,torch.Tensor)
+        assert isinstance(weight_msk,torch.Tensor)
+        __orig_dim = is_weights.shape
         is_weights = torch.cumprod(is_weights, dim=1)
         is_weights = is_weights*weight_msk
+        check_array_shape(is_weights, __orig_dim)
         return is_weights
 
 
@@ -198,8 +236,12 @@ class ISWeightOrchestrator(ISWeightCalculator):
     def __getitem__(self, idx):
         return self.is_samplers[idx]
     
-    def update(self, states:List[torch.Tensor], actions:List[torch.Tensor], 
-               eval_policy:Policy):
+    def update(
+        self, 
+        states:List[torch.Tensor], 
+        actions:List[torch.Tensor], 
+        eval_policy:Policy
+        ):
         super().update(states=states, actions=actions, eval_policy=eval_policy)
         for sampler in self.is_samplers.keys():
             self.is_samplers[sampler].update()

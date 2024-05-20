@@ -6,7 +6,10 @@ from typing import List
 class OPEEstimatorBase(metaclass=ABCMeta):
     
     
-    def __init__(self, cache_traj_rewards:bool=False) -> None:
+    def __init__(
+        self, 
+        cache_traj_rewards:bool=False
+        ) -> None:
         self.traj_rewards_cache:torch.Tensor = torch.Tensor(0)
         if cache_traj_rewards:
             self.__cache_func = self.__cache
@@ -19,10 +22,23 @@ class OPEEstimatorBase(metaclass=ABCMeta):
     def __pass_cache(self, traj_rewards):
         pass
     
-    def predict(self, rewards:List[torch.Tensor], states:List[torch.Tensor], 
-                actions:List[torch.Tensor], weights:torch.Tensor, 
-                discount:float, is_msk:torch.Tensor
-                )->torch.Tensor:
+    def predict(
+        self, 
+        rewards:List[torch.Tensor], 
+        states:List[torch.Tensor], 
+        actions:List[torch.Tensor], 
+        weights:torch.Tensor, 
+        discount:float, 
+        is_msk:torch.Tensor
+        )->torch.Tensor:
+        l_s = len(states)
+        l_r = len(rewards)
+        l_a = len(actions)
+        _msg = f"State({l_s}), rewards({l_r}), actions({l_a}), should be equal"
+        assert l_s==l_r==l_a, _msg
+        assert isinstance(weights,torch.Tensor)
+        assert isinstance(discount,float)
+        assert isinstance(is_msk,torch.Tensor)
         traj_rewards = self.predict_traj_rewards(
             rewards=rewards, states=states, actions=actions, weights=weights,
             discount=discount, is_msk=is_msk
@@ -31,11 +47,15 @@ class OPEEstimatorBase(metaclass=ABCMeta):
         return traj_rewards.mean()
     
     @abstractmethod
-    def predict_traj_rewards(self, rewards:List[torch.Tensor], 
-                             states:List[torch.Tensor], 
-                             actions:List[torch.Tensor], weights:torch.Tensor, 
-                             discount:float, is_msk:torch.Tensor
-                             )->torch.Tensor:
+    def predict_traj_rewards(
+        self, 
+        rewards:List[torch.Tensor], 
+        states:List[torch.Tensor], 
+        actions:List[torch.Tensor], 
+        weights:torch.Tensor,
+        discount:float, 
+        is_msk:torch.Tensor
+        )->torch.Tensor:
         """_summary_
 
         Args:

@@ -5,6 +5,7 @@ import pickle
 
 from ..base import PropensityTrainer
 from ...types import PropensityTorchBaseType
+from ...RuntimeChecks import check_array_dim
 
 __all__ = [
     "TorchPropensityTrainer",
@@ -19,6 +20,8 @@ class TorchPropensityTrainer(PropensityTrainer):
         estimator:PropensityTorchBaseType, 
         gpu:bool,
         ) -> None:
+        assert isinstance(estimator,PropensityTorchBaseType)
+        assert isinstance(gpu,bool)
         self.estimator = estimator
         self.gpu = gpu
         if self.gpu:
@@ -26,11 +29,17 @@ class TorchPropensityTrainer(PropensityTrainer):
         else:
             self.input_setup = self.load_pass
     
-    def load_to_gpu(self, x:torch.Tensor):
+    def load_to_gpu(
+        self, 
+        x:torch.Tensor
+        )->torch.Tensor:
         x = x.to(device='cuda')
         return x
     
-    def load_pass(self, x:torch.Tensor):
+    def load_pass(
+        self, 
+        x:torch.Tensor
+        )->torch.Tensor:
         return x
     
     def to_cpu(self):
@@ -76,7 +85,8 @@ class TorchClassTrainer(TorchPropensityTrainer):
         estimator:PropensityTorchBaseType, 
         gpu:bool
         ) -> None:
-        
+        assert isinstance(estimator,PropensityTorchBaseType)
+        assert isinstance(gpu,bool)
         super().__init__(estimator=estimator, gpu=gpu)
 
     def predict(
@@ -86,7 +96,7 @@ class TorchClassTrainer(TorchPropensityTrainer):
         **kwargs
         ) -> torch.Tensor:
         """Outputs the y values with highest likelihood given x.
-        res["out"] is expected to be of dimension: 
+        propense_res["out"] is expected to be of dimension: 
             (batch_size, n action values, n actions)
 
         Args:
@@ -95,9 +105,11 @@ class TorchClassTrainer(TorchPropensityTrainer):
         Returns:
             torch.Tensor: _description_
         """
+        assert isinstance(x,torch.Tensor)
         x = self.input_setup(x)
         self.estimator.eval()
         propense_res = self.estimator(x)
+        check_array_dim(propense_res["out"],3)
         # Take max over values
         res = torch.argmax(propense_res["out"], dim=1, keepdim=False)
         return res
@@ -121,15 +133,19 @@ class TorchClassTrainer(TorchPropensityTrainer):
         Returns:
             torch.Tensor: _description_
         """
+        assert isinstance(x,torch.Tensor)
+        assert isinstance(y,torch.Tensor)
         x = self.input_setup(x)
         self.estimator.eval()
         res = self.estimator(x)
         res_out = res["out"]
+        check_array_dim(res_out,3)
         n_rows = res_out.shape[0]
         n_out = res_out.shape[2]
         dim_0_sub = np.arange(0,n_rows)[:,None]
         dim_1_sub = np.tile(np.arange(0,n_out), (n_rows,1))
         res_out = res_out[dim_0_sub,y.int(),dim_1_sub]
+        assert res_out.shape == y.shape
         return res_out
         
 
@@ -141,6 +157,8 @@ class TorchRegTrainer(TorchPropensityTrainer):
         dist_func:torch.distributions.Distribution, 
         gpu:bool
         ) -> None:
+        assert isinstance(estimator,PropensityTorchBaseType)
+        assert isinstance(gpu,bool)
         super().__init__(estimator=estimator, gpu=gpu)
         self.dist_func = dist_func
               
@@ -162,9 +180,9 @@ class TorchRegTrainer(TorchPropensityTrainer):
         *args, 
         **kwargs
         ) -> torch.Tensor:
-        x = torch.Tensor(x)
+        assert isinstance(x,torch.Tensor)
+        assert isinstance(y,torch.Tensor)
         x = self.input_setup(x)
-        y = torch.Tensor(y)
         y = self.input_setup(y)
         self.estimator.eval()
         pred_res = self.estimator(x)

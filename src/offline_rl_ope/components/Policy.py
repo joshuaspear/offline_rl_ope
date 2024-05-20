@@ -1,6 +1,8 @@
 from abc import ABCMeta, abstractmethod
 import torch
 from typing import Callable, List
+from ..RuntimeChecks import check_array_dim
+
 
 def postproc_pass(x:torch.Tensor)->torch.Tensor:
     return x
@@ -91,6 +93,9 @@ class BehavPolicy(Policy):
                          collect_act=collect_act, gpu=gpu)
         
     def __call__(self, state:torch.Tensor, action:torch.Tensor)->torch.Tensor:
+        assert isinstance(state,torch.Tensor)
+        assert isinstance(action,torch.Tensor)
+        check_array_dim(action,2)
         pre_dim = state.shape[0]
         res = self.policy_func(y=action, x=state)
         res = res.view(pre_dim, -1)
@@ -114,8 +119,13 @@ class GreedyDeterministic(Policy):
         
     
     def __call__(self, state: torch.Tensor, action: torch.Tensor)->torch.Tensor:
+        assert isinstance(state,torch.Tensor)
+        assert isinstance(action,torch.Tensor)
+        check_array_dim(action,2)
         state = self.preproc_tens(state)
         greedy_action = self.policy_func(x=state)
+        check_array_dim(greedy_action,2)
+        assert action.shape == greedy_action.shape
         greedy_action = self.postproc_tens(greedy_action)
         self.collect_act_func(greedy_action)
         res = (greedy_action == action).all(dim=1, keepdim=True).int()
