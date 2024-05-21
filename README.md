@@ -92,6 +92,7 @@ The different kinds of importance samples can also be visualised by querying the
 ### Release log
 #### 6.0.0
 * Updated PropensityModels structure for sklearn and added a helper class for compatability with torch
+* Full runtime typechecking with jaxtyping
 
 #### 5.0.1
 * Fixed bug where GreedyDeterministic couldn't handle multi-dimensional action spaces
