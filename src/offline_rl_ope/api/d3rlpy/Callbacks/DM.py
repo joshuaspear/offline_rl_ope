@@ -11,7 +11,6 @@ import gym
 import gymnasium
 
 from .base import QueryCallbackBase
-from ....types import NDArray
 
 Shape = Union[Sequence[int], Sequence[Sequence[int]]]
 GymEnv = Union[gym.Env[Any, Any], gymnasium.Env[Any, Any]]
@@ -69,14 +68,20 @@ class FQECallback(QueryCallbackBase):
                     )
             else:    
                 fqe.build_with_env(self.__fqe_impl_init)
-        else:
-            fqe.build_with_dataset(self.__dataset)
         
-        fqe.fit(self.__dataset,  evaluators=self.__scorers, 
-                **self.__model_fit_kwargs, 
-                logger_adapter=FileAdapterFactory(root_dir=self.__logs_loc),
-                with_timestamp=False, 
-                experiment_name=f"EXP_{str(self.__cur_exp)}")
+        _msg = "Must provide n_steps for FQE training"
+        assert "n_steps" in self.__model_fit_kwargs, _msg
+        _msg = "Must provide n_steps_per_epoch for FQE training"
+        assert "n_steps_per_epoch" in self.__model_fit_kwargs, _msg
+        
+        fqe.fit(
+            self.__dataset, 
+            evaluators=self.__scorers, 
+            **self.__model_fit_kwargs, 
+            logger_adapter=FileAdapterFactory(root_dir=self.__logs_loc),
+            with_timestamp=False, 
+            experiment_name=f"EXP_{str(self.__cur_exp)}"
+            )
 
         res:Dict = {}
         for scr in self.__scorers:

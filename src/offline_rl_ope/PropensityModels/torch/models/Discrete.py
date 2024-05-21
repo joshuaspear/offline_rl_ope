@@ -3,7 +3,7 @@ import torch
 import torch.nn as nn
 
 from .base import PropensityTorchMlpBase
-from ....types import PropensityTorchOutputType
+from ....types import PropensityTorchOutputType, StateTensor
 
 __all__ = [
     "Categorical"
@@ -35,7 +35,7 @@ class Categorical(PropensityTorchMlpBase):
         
     def forward(
         self, 
-        x:torch.Tensor
+        x:StateTensor
         ) -> PropensityTorchOutputType:
         for layer in self.layers:
             x = layer(x)

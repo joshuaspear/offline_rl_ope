@@ -73,21 +73,29 @@ for test_conf in [sdat,ddat,bdat]:
         
         def reset(self):
             self.idx = 0
-            
-    class TestISWeightCalculator:
+    
+    # class TestISWeightCalculator:
         
-        def __init__(self) -> None:
-            self.is_weights = test_conf.weight_test_res
-            self.is_msk = test_conf.msk_test_res
-
-
-    eval_policy = MagicMock(spec=Policy)
-
+    #     def __init__(self) -> None:
+    #         self.is_weights = test_conf.weight_test_res
+    #         self.is_msk = test_conf.msk_test_res
+    
+    test_IS_weight_calculator = MagicMock(spec=ISWeightCalculator)
+    test_IS_weight_calculator.is_weights = MagicMock(
+        return_value=test_conf.weight_test_res)
+    test_IS_weight_calculator.is_msk = MagicMock(
+        return_value=test_conf.msk_test_res)
 
     class ISWeightCalculatorTest(unittest.TestCase):
 
         def setUp(self) -> None:
-            behav_policy = TestPolicy(test_conf.test_action_probs)
+            be_policy_mock = TestPolicy(test_conf.test_action_probs)
+            behav_policy = MagicMock(
+                spec=Policy,
+                side_effect=be_policy_mock
+                )
+            #behav_policy.__call__ = MagicMock(side_effect=)
+            #behav_policy = TestPolicy(test_conf.test_action_probs)
             self.is_sampler = ISWeightCalculator(behav_policy=behav_policy)
             # def __return_func(weight_array):
             #     return weight_array 
@@ -99,7 +107,12 @@ for test_conf in [sdat,ddat,bdat]:
         
         def test_get_traj_w(self):
             test_pred = []
-            eval_policy = TestPolicy(test_conf.test_eval_action_probs)
+            #eval_policy = TestPolicy(test_conf.test_eval_action_probs)
+            e_policy_mock = TestPolicy(test_conf.test_eval_action_probs)
+            eval_policy = MagicMock(
+                spec=Policy,
+                side_effect=e_policy_mock
+                )
             for s,a in zip(test_conf.test_state_vals, test_conf.test_action_vals):
                 s = torch.Tensor(s)
                 a = torch.Tensor(a)
@@ -117,7 +130,12 @@ for test_conf in [sdat,ddat,bdat]:
         def test_get_dataset_w(self):
             input_states = [torch.Tensor(s) for s in test_conf.test_state_vals]
             input_actions = [torch.Tensor(a) for a in test_conf.test_action_vals]
-            eval_policy = TestPolicy(test_conf.test_eval_action_probs)
+            #eval_policy = TestPolicy(test_conf.test_eval_action_probs)
+            e_policy_mock = TestPolicy(test_conf.test_eval_action_probs)
+            eval_policy = MagicMock(
+                spec=Policy,
+                side_effect=e_policy_mock
+                )
             is_weights, weight_msk = self.is_sampler.get_dataset_w(
                 states=input_states, actions=input_actions, eval_policy=eval_policy)
             self.assertEqual(is_weights.shape, test_conf.weight_test_res.shape)
@@ -155,7 +173,7 @@ for test_conf in [sdat,ddat,bdat]:
 
     class VanillaISTest(unittest.TestCase):
         def setUp(self) -> None:
-            self.is_sampler = VanillaIS(is_weight_calc=TestISWeightCalculator())
+            self.is_sampler = VanillaIS(is_weight_calc=test_IS_weight_calculator)
 
         def test_get_traj_weight_array(self):
             test_act_norm_conts_w_m = copy.deepcopy(test_conf.msk_test_res)
@@ -176,7 +194,7 @@ for test_conf in [sdat,ddat,bdat]:
                     
     class PerDecisionISTest(unittest.TestCase):
         def setUp(self) -> None:
-            self.is_sampler = PerDecisionIS(is_weight_calc=TestISWeightCalculator())
+            self.is_sampler = PerDecisionIS(is_weight_calc=test_IS_weight_calculator)
 
         def test_get_traj_weight_array(self):
             test_act_norm_conts_w_m = copy.deepcopy(test_conf.msk_test_res)

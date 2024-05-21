@@ -3,7 +3,7 @@ import torch
 import torch.nn as nn
 
 from .base import PropensityTorchMlpBase
-from ....types import PropensityTorchOutputType
+from ....types import PropensityTorchOutputType, StateTensor
 
 __all__ = [
     "FullGuassian"
@@ -11,9 +11,15 @@ __all__ = [
 
 class FullGuassian(PropensityTorchMlpBase):
     
-    def __init__(self, input_dim:int,  layers_dim:List[int], m_out_dim:int,
-                 sd_out_dim: int, actvton=nn.ReLU(), init_bias:float=0
-                ) -> None:
+    def __init__(
+        self, 
+        input_dim:int, 
+        layers_dim:List[int], 
+        m_out_dim:int,
+        sd_out_dim: int, 
+        actvton=nn.ReLU(), 
+        init_bias:float=0
+        ) -> None:
         
         super().__init__(input_dim=input_dim, layers_dim=layers_dim, 
                          actvton=actvton, init_bias=init_bias)
@@ -35,7 +41,7 @@ class FullGuassian(PropensityTorchMlpBase):
         
     def forward(
         self, 
-        x:torch.Tensor
+        x:StateTensor
         ) -> PropensityTorchOutputType:
         for layer in self.layers:
             x = layer(x)

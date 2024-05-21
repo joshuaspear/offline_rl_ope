@@ -36,14 +36,14 @@ class TestConfig:
                 np.pad(i.astype(bool),(0,max_len-len(i))).tolist()
                 )
         self.weight_test_res = torch.Tensor(weight_test_res)
-        self.msk_test_res = torch.Tensor(msk_test_res)
+        self.msk_test_res = torch.Tensor(msk_test_res).float()
         
         reward_test_res = []
         for i in self.test_reward_values:
             reward_test_res.append(
                 np.pad(np.array(i).squeeze(),(0,max_len-len(i))).tolist()
                 )
-        self.reward_test_res = torch.Tensor(reward_test_res)
+        self.reward_test_res = torch.Tensor(reward_test_res).float()
     
 
 test_state_vals = [

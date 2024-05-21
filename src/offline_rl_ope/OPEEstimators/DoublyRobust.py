@@ -2,10 +2,17 @@ import numpy as np
 import torch
 from typing import Any, List, Dict
 import math
+from jaxtyping import jaxtyped, Float
+from typeguard import typechecked as typechecker
 
+from ..types import (
+    WeightTensor, 
+    RewardTensor,
+    StateTensor,
+    ActionTensor,
+    SingleTrajSingleStepTensor)
 from .IS import ISEstimatorBase
 from .DirectMethod import DirectMethodBase
-from ..RuntimeChecks import check_array_dim
 
 
 
@@ -17,8 +24,9 @@ class DREstimator(ISEstimatorBase):
     def __init__(
         self, 
         dm_model:DirectMethodBase, 
-        norm_weights: bool, 
-        clip: float = None, 
+        norm_weights: bool,
+        clip_weights:bool=False,  
+        clip:float=0.0, 
         cache_traj_rewards:bool=False, 
         ignore_nan:bool=False, 
         norm_kwargs:Dict[str,Any] = {}
@@ -29,36 +37,49 @@ class DREstimator(ISEstimatorBase):
         assert isinstance(cache_traj_rewards,bool)
         assert isinstance(ignore_nan,bool)
         assert isinstance(norm_kwargs,Dict)
-        super().__init__(norm_weights=norm_weights, clip=clip, 
-                         cache_traj_rewards=cache_traj_rewards, 
-                         norm_kwargs=norm_kwargs)
+        super().__init__(
+            norm_weights=norm_weights,
+            clip_weights=clip_weights, 
+            clip=clip, 
+            cache_traj_rewards=cache_traj_rewards, 
+            norm_kwargs=norm_kwargs
+            )
         self.dm_model = dm_model
         if ignore_nan:
             self.ignore_nan = self.__ignore_nan
         else:
             self.ignore_nan = self.__raise_nan
-    
-    def __ignore_nan(self, p_t:torch.Tensor)->torch.Tensor:
-        assert isinstance(p_t,torch.Tensor)
+
+    @jaxtyped(typechecker=typechecker)
+    def __ignore_nan(
+        self, 
+        p_t:SingleTrajSingleStepTensor
+        )->SingleTrajSingleStepTensor:
+        # assert isinstance(p_t,torch.Tensor)
         if math.isnan(p_t):
-            res = torch.tensor(0)
+            res = torch.tensor([0.0])
         else:
             res = p_t
         return res
-    
-    def __raise_nan(self, p_t:torch.Tensor)->torch.Tensor:
-        assert isinstance(p_t,torch.Tensor)
+
+    @jaxtyped(typechecker=typechecker)
+    def __raise_nan(
+        self, 
+        p_t:SingleTrajSingleStepTensor
+        )->SingleTrajSingleStepTensor:
+        # assert isinstance(p_t,torch.Tensor)
         return p_t
-    
+
+    @jaxtyped(typechecker=typechecker)
     def __update_step(
         self, 
-        v_t:torch.Tensor, 
-        p_t:torch.Tensor,
-        r_t:torch.Tensor, 
-        v_dr_t:torch.Tensor, 
-        gamma:torch.Tensor, 
-        q_t:torch.Tensor
-        )->torch.Tensor:
+        v_t:SingleTrajSingleStepTensor, 
+        p_t:SingleTrajSingleStepTensor,
+        r_t:SingleTrajSingleStepTensor, 
+        v_dr_t:SingleTrajSingleStepTensor, 
+        gamma:SingleTrajSingleStepTensor, 
+        q_t:SingleTrajSingleStepTensor
+        )->SingleTrajSingleStepTensor:
         """ Predicts the time t+1 doubly robust value prediction based on time
             t values
 
@@ -80,28 +101,30 @@ class DREstimator(ISEstimatorBase):
             torch.Tensor: tensor of size 0, representing the doubly robust value
                 prediction at time t+1
         """
-        check_array_dim(v_t,0)
-        check_array_dim(p_t,0)
-        check_array_dim(r_t,0)
-        check_array_dim(v_dr_t,0)
-        check_array_dim(q_t,0)
-        assert isinstance(v_t,torch.Tensor)
-        assert isinstance(p_t,torch.Tensor)
-        assert isinstance(r_t,torch.Tensor)
-        assert isinstance(v_dr_t,torch.Tensor)
-        assert isinstance(gamma,torch.Tensor)
-        assert isinstance(q_t,torch.Tensor)
+        # check_array_dim(v_t,1)
+        # check_array_dim(p_t,1)
+        # check_array_dim(r_t,1)
+        # check_array_dim(v_dr_t,1)
+        # check_array_dim(q_t,1)
+        # assert isinstance(v_t,torch.Tensor)
+        # assert isinstance(p_t,torch.Tensor)
+        # assert isinstance(r_t,torch.Tensor)
+        # assert isinstance(v_dr_t,torch.Tensor)
+        # assert isinstance(gamma,torch.Tensor)
+        # assert isinstance(q_t,torch.Tensor)
         p_t = self.ignore_nan(p_t)
-        return v_t + p_t*(r_t + gamma*v_dr_t - q_t)
+        res = v_t + p_t*(r_t + gamma*v_dr_t - q_t)
+        return res
     
+    @jaxtyped(typechecker=typechecker)
     def get_traj_discnt_reward(
         self, 
-        reward_array:torch.Tensor,
+        reward_array:RewardTensor,
         discount:float, 
-        state_array:torch.Tensor, 
-        action_array:torch.Tensor, 
-        weight_array:torch.Tensor,
-        )->torch.Tensor:
+        state_array:StateTensor, 
+        action_array:ActionTensor, 
+        weight_array:WeightTensor,
+        )->SingleTrajSingleStepTensor:
         """ Takes in a tensor of reward values for a trajectory and outputs 
         a tensor of discounted reward values i.e. Tensor([r_{t}*\gamma_{t}])
 
@@ -118,20 +141,24 @@ class DREstimator(ISEstimatorBase):
             torch.Tensor: Tensor of discounted reward values of dimension 
             (traj_length)
         """
-        check_array_dim(reward_array,1)
-        check_array_dim(state_array,2)
-        check_array_dim(action_array,2)
-        check_array_dim(weight_array,1)
-        assert isinstance(reward_array,torch.Tensor)
-        assert isinstance(discount,float)
-        assert isinstance(state_array,torch.Tensor)
-        assert isinstance(action_array,torch.Tensor)
-        assert isinstance(weight_array,torch.Tensor)
-        v_dr = torch.tensor(0)
-        discount = torch.tensor(discount)
-        v:torch.Tensor = self.dm_model.get_v(state=state_array)
-        q:torch.Tensor = self.dm_model.get_q(
-            state=state_array, action=action_array)
+        # check_array_dim(reward_array,2)
+        # check_array_dim(state_array,2)
+        # check_array_dim(action_array,2)
+        # check_array_dim(weight_array,2)
+        # assert reward_array.shape[1] == 1
+        # assert isinstance(reward_array,torch.Tensor)
+        # assert isinstance(discount,float)
+        # assert isinstance(state_array,torch.Tensor)
+        # assert isinstance(action_array,torch.Tensor)
+        # assert isinstance(weight_array,torch.Tensor)
+        v_dr = torch.tensor([0.0])
+        discount = torch.tensor([discount])
+        v = self.dm_model.get_v(
+            state=state_array
+            )
+        q = self.dm_model.get_q(
+            state=state_array, action=action_array
+            )
         reward_array = torch.flip(reward_array, dims=[0])
         v = torch.flip(v, dims=[0])
         q = torch.flip(q, dims=[0])
@@ -147,15 +174,16 @@ class DREstimator(ISEstimatorBase):
                 )
         return v_dr
 
+    @jaxtyped(typechecker=typechecker)
     def predict_traj_rewards(
         self, 
         rewards:List[torch.Tensor], 
         states:List[torch.Tensor], 
         actions:List[torch.Tensor], 
-        weights:torch.Tensor, 
+        weights:WeightTensor, 
         discount:float, 
-        is_msk:torch.Tensor
-        )->torch.Tensor:
+        is_msk:WeightTensor
+        )->Float[torch.Tensor, "n_trajectories"]:
         """_summary_
 
         Args:
@@ -176,10 +204,11 @@ class DREstimator(ISEstimatorBase):
         l_w = weights.shape[0]
         _msg = f"State({l_s}), rewards({l_r}), actions({l_a}), mask({l_w}) should be equal"
         assert l_s==l_r==l_a==l_w, _msg
-        assert weights.shape == is_msk.shape
-        check_array_dim(weights,2)
-        check_array_dim(is_msk,2)
+        # assert weights.shape == is_msk.shape
+        # check_array_dim(weights,2)
+        # check_array_dim(is_msk,2)
         weights = self.process_weights(weights=weights, is_msk=is_msk)
+        # Tensor looses shape when masked
         weights = torch.masked_select(weights, is_msk > 0)
         weights_lst:List[torch.Tensor] = torch.split(
             weights, is_msk.sum(axis=1).type(torch.int64).tolist())
@@ -187,7 +216,8 @@ class DREstimator(ISEstimatorBase):
         for i, (r,s,a,w) in enumerate(
             zip(rewards, states, actions, weights_lst)):
             reward = self.get_traj_discnt_reward(
-                reward_array=r.squeeze(), state_array=s, action_array=a, 
-                weight_array=w, discount=discount) 
+                reward_array=r, state_array=s, action_array=a, 
+                # Reshape weight matrix due to previous mask
+                weight_array=w.reshape(-1,1), discount=discount) 
             reward_res[i] = reward
         return reward_res

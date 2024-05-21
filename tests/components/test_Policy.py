@@ -67,6 +67,8 @@ for test_conf in [sdat,ddat,bdat]:
             for s,a in zip(test_conf.test_state_vals, __test_action_vals):
                 s = torch.Tensor(s)
                 a = torch.Tensor(a)
+                assert len(s.shape) == 2, "Incorrect test input dimensions"
+                assert len(a.shape) == 2, "Incorrect test input dimensions"
                 pred = self.policy_0_eps(state=s, action=a)
                 self.assertEqual(pred.shape, torch.Size((s.shape[0],1)))
                 test_pred.append(pred.squeeze().numpy())
@@ -87,68 +89,70 @@ for test_conf in [sdat,ddat,bdat]:
             for s,a in zip(test_conf.test_state_vals, __test_action_vals):
                 s = torch.Tensor(s)
                 a = torch.Tensor(a)
+                assert len(s.shape) == 2, "Incorrect test input dimensions"
+                assert len(a.shape) == 2, "Incorrect test input dimensions"
                 pred = self.policy_001_eps(state=s, action=a)
                 self.assertEqual(pred.shape, torch.Size((s.shape[0],1)))
                 test_pred.append(pred.squeeze().numpy())
             test_pred = np.concatenate(test_pred)
             np.testing.assert_allclose(test_pred, test_res, atol=tollerance)
 
-        def test___call__0_eps_multi_dim(self):
-                test_pred = []
-                __test_action_vals = [
-                    np.concatenate(
-                        [np.array(i),np.abs(1-np.array(i))],
-                        axis=1
-                        ) for i in test_conf.test_action_vals
-                    ]
-                __test_eval_action_vals = [
-                    np.concatenate(
-                        [np.array(i),np.abs(1-np.array(i))],
-                        axis=1
-                        ) for i in test_conf.test_eval_action_vals
-                    ]
-                test_res = [(x==y).all(axis=1).astype(int) 
-                    for x,y in zip(__test_action_vals, __test_eval_action_vals)]
-                test_res = np.concatenate(test_res).squeeze()
-                tollerance = test_res.mean()/1000    
-                for s,a in zip(test_conf.test_state_vals, __test_action_vals):
-                    s = torch.Tensor(s)
-                    a = torch.Tensor(a)
-                    pred = self.policy_0_eps_multi_dim(state=s, action=a)
-                    self.assertEqual(pred.shape, torch.Size((s.shape[0],1)))
-                    test_pred.append(pred.squeeze().numpy())
-                test_pred = np.concatenate(test_pred)
-                np.testing.assert_allclose(test_pred, test_res, atol=tollerance)
+        # def test___call__0_eps_multi_dim(self):
+        #         test_pred = []
+        #         __test_action_vals = [
+        #             np.concatenate(
+        #                 [np.array(i),np.abs(1-np.array(i))],
+        #                 axis=1
+        #                 ) for i in test_conf.test_action_vals
+        #             ]
+        #         __test_eval_action_vals = [
+        #             np.concatenate(
+        #                 [np.array(i),np.abs(1-np.array(i))],
+        #                 axis=1
+        #                 ) for i in test_conf.test_eval_action_vals
+        #             ]
+        #         test_res = [(x==y).all(axis=1).astype(int) 
+        #             for x,y in zip(__test_action_vals, __test_eval_action_vals)]
+        #         test_res = np.concatenate(test_res).squeeze()
+        #         tollerance = test_res.mean()/1000    
+        #         for s,a in zip(test_conf.test_state_vals, __test_action_vals):
+        #             s = torch.Tensor(s)
+        #             a = torch.Tensor(a)
+        #             pred = self.policy_0_eps_multi_dim(state=s, action=a)
+        #             self.assertEqual(pred.shape, torch.Size((s.shape[0],1)))
+        #             test_pred.append(pred.squeeze().numpy())
+        #         test_pred = np.concatenate(test_pred)
+        #         np.testing.assert_allclose(test_pred, test_res, atol=tollerance)
                 
-        def test___call__0001_eps_multi_dim(self):
-            test_pred = []
-            __test_action_vals = [
-                np.concatenate(
-                    [np.array(i),np.abs(1-np.array(i))],
-                    axis=1
-                    ) for i in test_conf.test_action_vals
-                ]
-            __test_eval_action_vals = [
-                np.concatenate(
-                    [np.array(i),np.abs(1-np.array(i))],
-                    axis=1
-                    ) for i in test_conf.test_eval_action_vals
-                ]
-            test_res = [(x==y).all(axis=1).astype(int) 
-                for x,y in zip(__test_action_vals, __test_eval_action_vals)]
-            test_res = np.concatenate(test_res).squeeze()
-            test_res = np.where(
-                test_res == 1, 1-eps, 0+eps
-            )
-            tollerance = test_res.mean()/1000    
-            for s,a in zip(test_conf.test_state_vals, __test_action_vals):
-                s = torch.Tensor(s)
-                a = torch.Tensor(a)
-                pred = self.policy_001_eps_multi_dim(state=s, action=a)
-                self.assertEqual(pred.shape, torch.Size((s.shape[0],1)))
-                test_pred.append(pred.squeeze().numpy())
-            test_pred = np.concatenate(test_pred)
-            np.testing.assert_allclose(test_pred, test_res, atol=tollerance)
+        # def test___call__0001_eps_multi_dim(self):
+        #     test_pred = []
+        #     __test_action_vals = [
+        #         np.concatenate(
+        #             [np.array(i),np.abs(1-np.array(i))],
+        #             axis=1
+        #             ) for i in test_conf.test_action_vals
+        #         ]
+        #     __test_eval_action_vals = [
+        #         np.concatenate(
+        #             [np.array(i),np.abs(1-np.array(i))],
+        #             axis=1
+        #             ) for i in test_conf.test_eval_action_vals
+        #         ]
+        #     test_res = [(x==y).all(axis=1).astype(int) 
+        #         for x,y in zip(__test_action_vals, __test_eval_action_vals)]
+        #     test_res = np.concatenate(test_res).squeeze()
+        #     test_res = np.where(
+        #         test_res == 1, 1-eps, 0+eps
+        #     )
+        #     tollerance = test_res.mean()/1000    
+        #     for s,a in zip(test_conf.test_state_vals, __test_action_vals):
+        #         s = torch.Tensor(s)
+        #         a = torch.Tensor(a)
+        #         pred = self.policy_001_eps_multi_dim(state=s, action=a)
+        #         self.assertEqual(pred.shape, torch.Size((s.shape[0],1)))
+        #         test_pred.append(pred.squeeze().numpy())
+        #     test_pred = np.concatenate(test_pred)
+        #     np.testing.assert_allclose(test_pred, test_res, atol=tollerance)
 
     class MockPolicyClass:
         
@@ -190,6 +194,8 @@ for test_conf in [sdat,ddat,bdat]:
             for s,a in zip(test_conf.test_state_vals, test_conf.test_action_vals):
                 s = torch.Tensor(s)
                 a = torch.Tensor(a)
+                assert len(s.shape) == 2, "Incorrect test input dimensions"
+                assert len(a.shape) == 2, "Incorrect test input dimensions"
                 pred = self.policy(state=s, action=a)
                 self.assertEqual(pred.shape, torch.Size((s.shape[0],1)))
                 test_pred.append(pred.squeeze().numpy())

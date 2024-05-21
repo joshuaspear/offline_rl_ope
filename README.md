@@ -90,6 +90,9 @@ If importance sampling based methods are evaluating to 0, consider visualising t
 The different kinds of importance samples can also be visualised by querying the ```traj_is_weights``` attribute of a given ```ImportanceSampler``` object. If for example, vanilla importance sampling is being used and the samples are not ```NaN``` or ```Inf``` then visualising the ```traj_is_weights``` may provide insight. In particular, IS weights will tend to inifinity when the evaluation policy places large density on an action in comparison to the behaviour policy.
 
 ### Release log
+#### 6.0.0
+* Updated PropensityModels structure for sklearn and added a helper class for compatability with torch
+
 #### 5.0.1
 * Fixed bug where GreedyDeterministic couldn't handle multi-dimensional action spaces
 #### 5.0.0

@@ -1,7 +1,9 @@
 import torch
 from .MetricBase import MetricBase
-from ..RuntimeChecks import check_array_dim
+from jaxtyping import jaxtyped
+from typeguard import typechecked as typechecker
 
+from ..types import WeightTensor
 
 __all__ = [
     "ValidWeightsProp"
@@ -17,16 +19,17 @@ class ValidWeightsProp(MetricBase):
         self.__min_w = min_w
         self.__max_w = max_w
     
+    @jaxtyped(typechecker=typechecker)
     def __valid_weights(
         self, 
-        weights:torch.Tensor, 
-        weight_msk:torch.Tensor
+        weights:WeightTensor, 
+        weight_msk:WeightTensor
         ) -> float:
-        assert isinstance(weights,torch.Tensor)
-        assert isinstance(weight_msk,torch.Tensor)
-        check_array_dim(weights,2)
-        check_array_dim(weight_msk,2)
-        assert weights.shape == weight_msk.shape
+        # assert isinstance(weights,torch.Tensor)
+        # assert isinstance(weight_msk,torch.Tensor)
+        # check_array_dim(weights,2)
+        # check_array_dim(weight_msk,2)
+        # assert weights.shape == weight_msk.shape
         vw_mask = (
             (weights > self.__min_w) & 
             (weights < self.__max_w)
@@ -39,8 +42,8 @@ class ValidWeightsProp(MetricBase):
         
     def __call__(
         self, 
-        weights:torch.Tensor, 
-        weight_msk:torch.Tensor
+        weights:WeightTensor, 
+        weight_msk:WeightTensor
         ) -> float:
         return self.__valid_weights(
             weights=weights, 

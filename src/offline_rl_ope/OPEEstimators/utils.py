@@ -1,8 +1,9 @@
 from abc import ABCMeta, abstractmethod
-from typing import Any
 import torch
+from jaxtyping import jaxtyped, Float
+from typeguard import typechecked as typechecker
 
-from ..RuntimeChecks import check_array_dim
+from ..types import WeightTensor
 
 
 class WeightNorm(metaclass=ABCMeta):
@@ -10,9 +11,9 @@ class WeightNorm(metaclass=ABCMeta):
     @abstractmethod
     def __call__(
         self, 
-        traj_is_weights:torch.Tensor, 
-        is_msk:torch.Tensor
-        ) -> torch.Tensor:
+        traj_is_weights:WeightTensor, 
+        is_msk:WeightTensor
+        ) -> WeightTensor:
         pass
 
 # is_msk.sum(axis=0, keepdim=True) is taken as the 
@@ -37,12 +38,13 @@ class WISWeightNorm(WeightNorm):
         self.smooth_eps = smooth_eps
         self.avg_denom = avg_denom
         self.discount = discount
-    
+
+    @jaxtyped(typechecker=typechecker)    
     def calc_norm(
         self, 
-        traj_is_weights:torch.Tensor, 
-        is_msk:torch.Tensor
-        ) -> torch.Tensor:
+        traj_is_weights:WeightTensor, 
+        is_msk:WeightTensor
+        ) -> Float[torch.Tensor, "1 traj_length"]:
         """Calculates the denominator for weighted importance sampling.
         smooth_eps prevents nan values occuring in instances where there exists
         valid time t importance ratios however, these are all 0. This should
@@ -72,14 +74,14 @@ class WISWeightNorm(WeightNorm):
                 ith trajectory was observed
 
         Returns:
-            torch.Tensor: Tensor of dimension (# trajectories, 1) defining the 
-            normalisation value for each timestep
+            torch.Tensor: Tensor of dimension (# trajectories, 1) 
+            defining the normalisation value for each timestep
         """
-        assert isinstance(traj_is_weights,torch.Tensor)
-        assert isinstance(is_msk,torch.Tensor)
-        assert traj_is_weights.shape == is_msk.shape
-        check_array_dim(traj_is_weights,2)
-        check_array_dim(is_msk,2)
+        # assert isinstance(traj_is_weights,torch.Tensor)
+        # assert isinstance(is_msk,torch.Tensor)
+        # assert traj_is_weights.shape == is_msk.shape
+        # check_array_dim(traj_is_weights,2)
+        # check_array_dim(is_msk,2)
         discnt_tens = torch.full(traj_is_weights.shape, self.discount)
         discnt_pows = torch.arange(0, traj_is_weights.shape[1])[None,:].repeat(
             traj_is_weights.shape[0],1)
@@ -93,11 +95,12 @@ class WISWeightNorm(WeightNorm):
                 is_msk.sum(dim=0, keepdim=True)+self.smooth_eps)
         return denom
 
+    @jaxtyped(typechecker=typechecker)
     def __call__(
         self, 
-        traj_is_weights:torch.Tensor, 
-        is_msk:torch.Tensor
-        ) -> torch.Tensor:
+        traj_is_weights:WeightTensor, 
+        is_msk:WeightTensor
+        ) -> WeightTensor:
         """Normalised propensity weights according to 
         'weighted importance sampling'. 
 
@@ -113,11 +116,11 @@ class WISWeightNorm(WeightNorm):
             torch.Tensor: Tensor of dimension (# trajectories, max(traj_length)) 
             with normalised weights
         """
-        assert isinstance(traj_is_weights,torch.Tensor)
-        assert isinstance(is_msk,torch.Tensor)
-        assert traj_is_weights.shape == is_msk.shape
-        check_array_dim(traj_is_weights,2)
-        check_array_dim(is_msk,2)
+        # assert isinstance(traj_is_weights,torch.Tensor)
+        # assert isinstance(is_msk,torch.Tensor)
+        # assert traj_is_weights.shape == is_msk.shape
+        # check_array_dim(traj_is_weights,2)
+        # check_array_dim(is_msk,2)
         denom = self.calc_norm(traj_is_weights=traj_is_weights, is_msk=is_msk)
         res = traj_is_weights/denom
         return res
@@ -128,12 +131,13 @@ class VanillaNormWeights(WeightNorm):
     
     def __init__(self, *args, **kwargs) -> None:
         pass
-    
+
+    @jaxtyped(typechecker=typechecker)
     def __call__(
         self, 
-        traj_is_weights:torch.Tensor, 
-        is_msk:torch.Tensor
-        )->torch.Tensor:
+        traj_is_weights:WeightTensor, 
+        is_msk:WeightTensor
+        )->WeightTensor:
         """Helper function
 
         Args:
@@ -147,16 +151,17 @@ class VanillaNormWeights(WeightNorm):
         Returns:
             torch.Tensor: traj_is_weights with element wise average
         """
-        assert isinstance(traj_is_weights,torch.Tensor)
-        check_array_dim(traj_is_weights,2)
+        # assert isinstance(traj_is_weights,torch.Tensor)
+        # check_array_dim(traj_is_weights,2)
         # The first dimension defines the number of trajectories and we require
         # the average over trajectories
         return traj_is_weights/traj_is_weights.shape[0]
 
+@jaxtyped(typechecker=typechecker)
 def clip_weights(
-    traj_is_weights:torch.Tensor, 
+    traj_is_weights:WeightTensor, 
     clip:float
-    )->torch.Tensor:
+    )->WeightTensor:
     """Clips propensity weights according to the value provided in clip
 
     Args:
@@ -170,15 +175,16 @@ def clip_weights(
         torch.Tensor: Tensor of dimension (# trajectories, max(traj_length)) 
             with clipped weights
     """
-    assert isinstance(traj_is_weights,torch.Tensor)
+    # assert isinstance(traj_is_weights,torch.Tensor)
     assert isinstance(clip,float)
     res = traj_is_weights.clamp(min=1/clip, max=clip)
     return res
 
+@jaxtyped(typechecker=typechecker)
 def clip_weights_pass(
-    traj_is_weights:torch.Tensor, 
+    traj_is_weights:WeightTensor, 
     clip:float
-    )->torch.Tensor:
+    )->WeightTensor:
     """Helper function
 
     Args:
@@ -191,5 +197,5 @@ def clip_weights_pass(
     Returns:
         torch.Tensor: Identical tensor to traj_is_weights
     """
-    assert isinstance(traj_is_weights,torch.Tensor)
+    # assert isinstance(traj_is_weights,torch.Tensor)
     return traj_is_weights

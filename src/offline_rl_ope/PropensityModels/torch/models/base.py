@@ -3,7 +3,7 @@ import torch
 import torch.nn as nn
 from typing import List
 
-from ....types import PropensityTorchOutputType
+from ....types import PropensityTorchOutputType, StateTensor
 
 __all__ = [
     "PropensityTorchBase",
@@ -26,7 +26,7 @@ class PropensityTorchMlpBase(PropensityTorchBase):
         self, 
         input_dim:int, 
         layers_dim:List[int], 
-        actvton, 
+        actvton:nn.Module, 
         init_bias:float = 0
         ) -> None:
         super().__init__()
@@ -54,5 +54,5 @@ class PropensityTorchMlpBase(PropensityTorchBase):
                 layer.bias.data.fill_(value)            
     
     @abstractmethod
-    def forward(self, x:torch.Tensor) -> PropensityTorchOutputType:
+    def forward(self, x:StateTensor) -> PropensityTorchOutputType:
         pass

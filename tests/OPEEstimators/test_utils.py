@@ -26,6 +26,7 @@ for test_conf in [sdat,ddat,bdat]:
         def test_clip_weights(self):
             clip = 1.2
             test_res = test_conf.weight_test_res.clamp(max=1.2, min=1/1.2)
+            assert len(test_conf.weight_test_res.shape) == 2, "Incorrect test input dimensions"
             pred_res = clip_weights(test_conf.weight_test_res, clip=clip)
             self.assertEqual(pred_res.shape,test_conf.weight_test_res.shape)
             np.testing.assert_allclose(pred_res, test_res, atol=self.clip_toll)
@@ -33,6 +34,7 @@ for test_conf in [sdat,ddat,bdat]:
         def test_clip_weights_pass(self):
             clip = 1.2
             test_res = copy.deepcopy(test_conf.weight_test_res)
+            assert len(test_conf.weight_test_res.shape) == 2, "Incorrect test input dimensions"
             pred_res = clip_weights_pass(test_conf.weight_test_res, clip=clip)
             self.assertEqual(pred_res.shape,test_conf.weight_test_res.shape)
             np.testing.assert_allclose(pred_res, test_res, atol=self.clip_toll)
@@ -51,8 +53,12 @@ for test_conf in [sdat,ddat,bdat]:
                 test_res = test_conf.weight_test_res/denom
                 toll = test_res.mean()/1000
                 calculator = VanillaNormWeights()
-                pred_res = calculator(traj_is_weights=test_conf.weight_test_res, 
-                                    is_msk=test_conf.msk_test_res)
+                assert len(test_conf.weight_test_res.shape) == 2, "Incorrect test input dimensions"
+                assert len(test_conf.msk_test_res.shape) == 2, "Incorrect test input dimensions"
+                pred_res = calculator(
+                    traj_is_weights=test_conf.weight_test_res, 
+                    is_msk=test_conf.msk_test_res
+                    )
                 self.assertEqual(pred_res.shape,test_conf.weight_test_res.shape)
                 np.testing.assert_allclose(pred_res.numpy(), test_res.numpy(), 
                                         atol=toll.numpy())
@@ -62,8 +68,12 @@ for test_conf in [sdat,ddat,bdat]:
             test_res = test_conf.weight_test_res/denom
             toll = test_res.mean()/1000
             calculator = WISWeightNorm()
-            pred_res = calculator(traj_is_weights=test_conf.weight_test_res, 
-                                is_msk=test_conf.msk_test_res)
+            assert len(test_conf.weight_test_res.shape) == 2, "Incorrect test input dimensions"
+            assert len(test_conf.msk_test_res.shape) == 2, "Incorrect test input dimensions"
+            pred_res = calculator(
+                traj_is_weights=test_conf.weight_test_res, 
+                is_msk=test_conf.msk_test_res
+                )
             self.assertEqual(pred_res.shape,test_conf.weight_test_res.shape)
             np.testing.assert_allclose(pred_res.numpy(), test_res.numpy(), 
                                     atol=toll.numpy())
@@ -74,8 +84,12 @@ for test_conf in [sdat,ddat,bdat]:
             test_res = weight_test_res_alter/denom
             toll = test_res.nanmean()/1000
             calculator = WISWeightNorm(smooth_eps=smooth_eps)
-            pred_res = calculator(traj_is_weights=weight_test_res_alter, 
-                                is_msk=test_conf.msk_test_res)
+            assert len(weight_test_res_alter.shape) == 2, "Incorrect test input dimensions"
+            assert len(test_conf.msk_test_res.shape) == 2, "Incorrect test input dimensions"
+            pred_res = calculator(
+                traj_is_weights=weight_test_res_alter, 
+                is_msk=test_conf.msk_test_res
+                )
             self.assertEqual(pred_res.shape,weight_test_res_alter.shape)
             np.testing.assert_allclose(pred_res.numpy(), test_res.numpy(), 
                                     atol=toll.numpy())
@@ -85,6 +99,8 @@ for test_conf in [sdat,ddat,bdat]:
             test_res = weight_test_res_alter/denom
             toll = test_res.nanmean()/1000
             calculator = WISWeightNorm()
+            assert len(weight_test_res_alter.shape) == 2, "Incorrect test input dimensions"
+            assert len(test_conf.msk_test_res.shape) == 2, "Incorrect test input dimensions"            
             pred_res = calculator(traj_is_weights=weight_test_res_alter, 
                                 is_msk=test_conf.msk_test_res)
             self.assertEqual(pred_res.shape,weight_test_res_alter.shape)
@@ -141,6 +157,8 @@ for test_conf in [sdat,ddat,bdat]:
             calculator = WISWeightNorm(
                 discount=discount
                 )
+            assert len(weight_test_res_alter.shape) == 2, "Incorrect test input dimensions"
+            assert len(test_conf.msk_test_res.shape) == 2, "Incorrect test input dimensions"            
             pred_res = calculator(traj_is_weights=weight_test_res_alter, 
                                 is_msk=test_conf.msk_test_res)
             self.assertEqual(pred_res.shape,weight_test_res_alter.shape)
@@ -160,6 +178,8 @@ for test_conf in [sdat,ddat,bdat]:
                 smooth_eps=smooth_eps,
                 avg_denom=True
                 )
+            assert len(weight_test_res_alter.shape) == 2, "Incorrect test input dimensions"
+            assert len(test_conf.msk_test_res.shape) == 2, "Incorrect test input dimensions"            
             pred_res = calculator(traj_is_weights=weight_test_res_alter, 
                                 is_msk=test_conf.msk_test_res)
             self.assertEqual(pred_res.shape,weight_test_res_alter.shape)
@@ -177,6 +197,8 @@ for test_conf in [sdat,ddat,bdat]:
             calculator = WISWeightNorm(
                 avg_denom=True
                 )
+            assert len(weight_test_res_alter.shape) == 2, "Incorrect test input dimensions"
+            assert len(test_conf.msk_test_res.shape) == 2, "Incorrect test input dimensions"            
             pred_res = calculator(traj_is_weights=weight_test_res_alter, 
                                 is_msk=test_conf.msk_test_res)
             self.assertEqual(pred_res.shape,weight_test_res_alter.shape)
@@ -211,6 +233,8 @@ for test_conf in [sdat,ddat,bdat]:
                 discount=discount,
                 avg_denom=True
                 )
+            assert len(weight_test_res_alter.shape) == 2, "Incorrect test input dimensions"
+            assert len(test_conf.msk_test_res.shape) == 2, "Incorrect test input dimensions"
             pred_res = calculator(traj_is_weights=weight_test_res_alter, 
                                 is_msk=test_conf.msk_test_res)
             self.assertEqual(pred_res.shape,weight_test_res_alter.shape)
@@ -243,6 +267,8 @@ for test_conf in [sdat,ddat,bdat]:
                 discount=0.99,
                 avg_denom=True
                 )
+            assert len(weight_test_res_alter.shape) == 2, "Incorrect test input dimensions"
+            assert len(test_conf.msk_test_res.shape) == 2, "Incorrect test input dimensions"            
             pred_res = calculator(traj_is_weights=weight_test_res_alter, 
                                 is_msk=test_conf.msk_test_res)
             self.assertEqual(pred_res.shape,weight_test_res_alter.shape)

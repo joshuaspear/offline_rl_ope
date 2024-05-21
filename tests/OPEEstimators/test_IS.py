@@ -1,9 +1,8 @@
 import unittest
 from unittest.mock import MagicMock
 import torch
-import logging
 import numpy as np
-from offline_rl_ope.OPEEstimators.IS import ISEstimator, ISEstimatorBase
+from offline_rl_ope.OPEEstimators.IS import ISEstimator
 # from ..base import (test_reward_values, reward_test_res, weight_test_res,
 #                     msk_test_res)
 from ..base import (

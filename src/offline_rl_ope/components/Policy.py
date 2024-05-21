@@ -1,7 +1,11 @@
 from abc import ABCMeta, abstractmethod
 import torch
 from typing import Callable, List
+from jaxtyping import jaxtyped, Float
+from typeguard import typechecked as typechecker
+
 from ..RuntimeChecks import check_array_dim
+from ..types import (StateTensor,ActionTensor)
 
 
 def postproc_pass(x:torch.Tensor)->torch.Tensor:
@@ -64,8 +68,13 @@ class Policy(metaclass=ABCMeta):
 
     
     @abstractmethod
-    def __call__(self, state:torch.Tensor, action:torch.Tensor)->torch.Tensor:
-        """_summary_
+    def __call__(
+        self, 
+        state:StateTensor, 
+        action:ActionTensor
+        )->ActionTensor:
+        """Defines the probability of the given actions under the given states
+        according to the policy defined by policy_func
 
         Args:
             state (torch.Tensor): Tensor of dimension (traj_length, state dim)
@@ -76,7 +85,8 @@ class Policy(metaclass=ABCMeta):
 
         Returns:
             torch.Tensor: Tensor of dimension (traj_length, 1), defining the 
-            state-action probabilities
+            state-action probabilities i.e., if the action space is 
+            n-dimensional, the output probability is the joint over the actions
         """
         pass
 
@@ -92,13 +102,16 @@ class BehavPolicy(Policy):
         super().__init__(policy_func, collect_res=collect_res, 
                          collect_act=collect_act, gpu=gpu)
         
-    def __call__(self, state:torch.Tensor, action:torch.Tensor)->torch.Tensor:
-        assert isinstance(state,torch.Tensor)
-        assert isinstance(action,torch.Tensor)
-        check_array_dim(action,2)
-        pre_dim = state.shape[0]
+    @jaxtyped(typechecker=typechecker)
+    def __call__(
+        self, 
+        state:StateTensor, 
+        action:ActionTensor
+        )->Float[torch.Tensor, "traj_length 1"]:
+        # assert isinstance(state,torch.Tensor)
+        # assert isinstance(action,torch.Tensor)
+        # check_array_dim(action,2)
         res = self.policy_func(y=action, x=state)
-        res = res.view(pre_dim, -1)
         self.collect_res_fn(res)
         return res
         
@@ -117,18 +130,22 @@ class GreedyDeterministic(Policy):
                          collect_act=collect_act, gpu=gpu)
         self.__eps = eps
         
-    
-    def __call__(self, state: torch.Tensor, action: torch.Tensor)->torch.Tensor:
-        assert isinstance(state,torch.Tensor)
-        assert isinstance(action,torch.Tensor)
-        check_array_dim(action,2)
+    @jaxtyped(typechecker=typechecker)
+    def __call__(
+        self, 
+        state:StateTensor, 
+        action:ActionTensor
+        )->Float[torch.Tensor, "traj_length 1"]:
+        # assert isinstance(state,torch.Tensor)
+        # assert isinstance(action,torch.Tensor)
+        # check_array_dim(action,2)
         state = self.preproc_tens(state)
         greedy_action = self.policy_func(x=state)
         check_array_dim(greedy_action,2)
         assert action.shape == greedy_action.shape
         greedy_action = self.postproc_tens(greedy_action)
         self.collect_act_func(greedy_action)
-        res = (greedy_action == action).all(dim=1, keepdim=True).int()
+        res = (greedy_action == action).all(dim=1, keepdim=True).float()
         res_eps_upper = res*(1-self.__eps)
         res_eps_lower = (1-res)*(self.__eps)
         res = res_eps_upper + res_eps_lower
