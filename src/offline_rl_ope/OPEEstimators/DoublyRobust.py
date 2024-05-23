@@ -184,15 +184,24 @@ class DREstimator(ISEstimatorBase):
         discount:float, 
         is_msk:WeightTensor
         )->Float[torch.Tensor, "n_trajectories"]:
-        """_summary_
+        """Function for subclasses to override defining the trajectory level
+        estimates of return
 
         Args:
-            rewards (List[torch.Tensor]): _description_
-            states (List[torch.Tensor]): _description_
-            actions (List[torch.Tensor]): _description_
-            weights (torch.Tensor): _description_
-            discount (float): _description_
-            is_msk (torch.Tensor): _description_
+            rewards (List[torch.Tensor]): List of Tensors of undiscounted 
+                rewards of dimension (max horizon, 1). Trajectories with 
+                length < max_horizon should have zero weight imputed
+            states (List[torch.Tensor]): List of Tensors of state values. Should 
+                be of dimension (traj horizon, state features)
+            actions (List[torch.Tensor]): List of Tensors of state values. 
+                Should be of dimension (traj horizon, action features)
+            weights (torch.Tensor): Tensor of IS weights of dimension 
+                (# trajectories, max_horizon). Trajectories with length < 
+                max_horizon should have zero weight imputed
+            discount (float): One step discount factor
+            is_msk (torch.Tensor): Tensor of dimension 
+                (# trajectories, max_horizon) defining the lengths of individual 
+                trajectories
 
         Returns:
             torch.Tensor: tensor of size (# trajectories,) defining the 

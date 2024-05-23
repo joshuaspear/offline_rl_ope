@@ -1,6 +1,7 @@
 # offline_rl_ope (BETA RELEASE)
 
 **WARNING**
+- All IS methods implemented incorrectly in versions < 6.x
 - Per-decision weighted importance sampling was incorrectly implemented in versions < 5.X
 - Weighted importance sampling was incorrectly implemented in versions 1.X.X and 2.1.X, 2.2.X
 - Unit testing currently only running in Python 3.11. 3.10 will be supported in the future
@@ -93,6 +94,7 @@ The different kinds of importance samples can also be visualised by querying the
 #### 6.0.0
 * Updated PropensityModels structure for sklearn and added a helper class for compatability with torch
 * Full runtime typechecking with jaxtyping
+* Fixed bug with IS methods where the average was being taken twice
 
 #### 5.0.1
 * Fixed bug where GreedyDeterministic couldn't handle multi-dimensional action spaces

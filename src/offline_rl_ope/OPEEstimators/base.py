@@ -1,7 +1,9 @@
 from abc import ABCMeta, abstractmethod
 import torch
 from typing import List
+from jaxtyping import Float
 
+from ..types import WeightTensor
 
 class OPEEstimatorBase(metaclass=ABCMeta):
     
@@ -44,7 +46,7 @@ class OPEEstimatorBase(metaclass=ABCMeta):
             discount=discount, is_msk=is_msk
             )
         self.__cache_func(traj_rewards)
-        return traj_rewards.mean()
+        return traj_rewards.sum()
     
     @abstractmethod
     def predict_traj_rewards(
@@ -52,19 +54,25 @@ class OPEEstimatorBase(metaclass=ABCMeta):
         rewards:List[torch.Tensor], 
         states:List[torch.Tensor], 
         actions:List[torch.Tensor], 
-        weights:torch.Tensor,
+        weights:WeightTensor,
         discount:float, 
-        is_msk:torch.Tensor
-        )->torch.Tensor:
-        """_summary_
+        is_msk:WeightTensor
+        )->Float[torch.Tensor, "n_trajectories"]:
+        """Function for subclasses to override defining the trajectory level
+        estimates of return
 
         Args:
+            rewards (List[torch.Tensor]): List of Tensors of undiscounted 
+                rewards of dimension (max horizon, 1). Trajectories with 
+                length < max_horizon should have zero weight imputed
+            states (List[torch.Tensor]): List of Tensors of state values. Should 
+                be of dimension (traj horizon, state features)
+            actions (List[torch.Tensor]): List of Tensors of state values. 
+                Should be of dimension (traj horizon, action features)
             weights (torch.Tensor): Tensor of IS weights of dimension 
                 (# trajectories, max_horizon). Trajectories with length < 
                 max_horizon should have zero weight imputed
-            discnt_rewards (torch.Tensor): Tensor of discounted rewards  
-                of dimension (# trajectories, max_horizon). Trajectories with 
-                length < max_horizon should have zero weight imputed
+            discount (float): One step discount factor
             is_msk (torch.Tensor): Tensor of dimension 
                 (# trajectories, max_horizon) defining the lengths of individual 
                 trajectories

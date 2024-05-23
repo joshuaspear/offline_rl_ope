@@ -162,7 +162,7 @@ class ISEstimator(ISEstimatorBase):
             weights (torch.Tensor): Tensor of IS weights of dimension 
                 (# trajectories, max_horizon). Trajectories with length < 
                 max_horizon should have zero weight imputed
-            
+            discount (float): One step discount factor
             is_msk (torch.Tensor): Tensor of dimension 
                 (# trajectories, max_horizon) defining the lengths of individual 
                 trajectories
