@@ -6,7 +6,6 @@ from jaxtyping import jaxtyped, Float
 from typeguard import typechecked as typechecker
 
 from ..types import StateTensor, ActionTensor
-from ..RuntimeChecks import check_array_dim
 
 class DirectMethodBase(metaclass=ABCMeta):
     
@@ -14,17 +13,26 @@ class DirectMethodBase(metaclass=ABCMeta):
         self.model = model
     
     @abstractmethod
-    def calculate_v(self, state:torch.Tensor) -> torch.Tensor:
+    def calculate_v(
+        self, 
+        state:StateTensor
+        ) -> Float[torch.Tensor, "traj_length 1"]:
         pass
     
     @abstractmethod
-    def calculate_q(self, state:torch.Tensor, action:torch.Tensor) -> torch.Tensor:
+    def calculate_q(
+        self, 
+        state:StateTensor, 
+        action:ActionTensor
+        ) -> Float[torch.Tensor, "traj_length 1"]:
         pass
 
     @jaxtyped(typechecker=typechecker)
-    def get_v(self, state:torch.Tensor) -> torch.Tensor:
+    def get_v(
+        self, 
+        state:StateTensor
+        ) -> Float[torch.Tensor, "traj_length 1"]:
         res = self.calculate_v(state=state)
-        check_array_dim(res,2)
         return res 
     
     @jaxtyped(typechecker=typechecker)
@@ -34,7 +42,6 @@ class DirectMethodBase(metaclass=ABCMeta):
         action:ActionTensor
         ) -> Float[torch.Tensor, "traj_length 1"]:
         res = self.calculate_q(state=state, action=action)
-        check_array_dim(res,2)
         return res 
     
     
