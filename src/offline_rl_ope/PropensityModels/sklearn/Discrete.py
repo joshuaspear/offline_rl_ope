@@ -146,7 +146,7 @@ class MultiOutputMultiClassTrainer(PropensityTrainer):
             predicted action values given the state.
         """
         # assert isinstance(x,np.ndarray)
-        return self.estimator.predict(X=x, *args, **kwargs)
+        return self.estimator.predict(X=x, *args, **kwargs).astype(float)
     
     def save(self, path:str) -> None:
         with open(path, "wb") as f:
