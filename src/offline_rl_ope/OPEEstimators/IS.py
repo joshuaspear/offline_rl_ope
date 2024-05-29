@@ -1,5 +1,5 @@
 import torch
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Union
 from jaxtyping import jaxtyped, Float
 from typeguard import typechecked as typechecker
 
@@ -21,7 +21,7 @@ class ISEstimatorBase(OPEEstimatorBase):
         clip_weights:bool=False, 
         cache_traj_rewards:bool=False,
         clip:float=0.0,
-        norm_kwargs:Dict[str,Any] = {}
+        norm_kwargs:Dict[str,Union[str,bool]] = {}
         ) -> None:
         super().__init__(cache_traj_rewards)
         assert isinstance(norm_weights,bool)
@@ -75,7 +75,7 @@ class ISEstimator(ISEstimatorBase):
         clip_weights:bool=False, 
         clip: float = 0.0, 
         cache_traj_rewards:bool=False, 
-        norm_kwargs:Dict[str,Any] = {}
+        norm_kwargs:Dict[str,Union[str,bool]] = {}
         ) -> None:
         super().__init__(norm_weights=norm_weights, clip_weights=clip_weights, 
                          clip=clip, cache_traj_rewards=cache_traj_rewards, 

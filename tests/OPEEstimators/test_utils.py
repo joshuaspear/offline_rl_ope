@@ -4,273 +4,527 @@ import torch
 import unittest
 from offline_rl_ope.OPEEstimators.utils import (
     clip_weights, clip_weights_pass, VanillaNormWeights, WISWeightNorm)
-# from ..base import (weight_test_res, msk_test_res)
-from ..base import (
-    single_discrete_action_test as sdat,
-    duel_discrete_action_test as ddat,
-    bin_discrete_action_test as bdat
-    )
+from parameterized import parameterized_class
+from ..base import test_configs_fmt_class, TestConfig
 
+@parameterized_class(test_configs_fmt_class)
+class UtilsTestVanillaIS(unittest.TestCase):
+    
+    test_conf:TestConfig
+    
+    def setUp(self) -> None:
+        self.clip_toll = self.test_conf.weight_test_res.numpy().mean()/1000
 
-
-for test_conf in [sdat,ddat,bdat]:
-
-    weight_test_res_alter = copy.deepcopy(test_conf.weight_test_res)
-    weight_test_res_alter[0] = torch.zeros(len(weight_test_res_alter[0]))
-
-    class UtilsTest(unittest.TestCase):
+    def test_clip_weights(self):
+        clip = 1.2
+        test_res = self.test_conf.weight_test_res.clamp(max=1.2, min=1/1.2)
+        assert len(self.test_conf.weight_test_res.shape) == 2, "Incorrect test input dimensions"
+        pred_res = clip_weights(self.test_conf.weight_test_res, clip=clip)
+        self.assertEqual(pred_res.shape,self.test_conf.weight_test_res.shape)
+        np.testing.assert_allclose(pred_res, test_res, atol=self.clip_toll)
+    
+    def test_clip_weights_pass(self):
+        clip = 1.2
+        test_res = copy.deepcopy(self.test_conf.weight_test_res)
+        assert len(self.test_conf.weight_test_res.shape) == 2, "Incorrect test input dimensions"
+        pred_res = clip_weights_pass(self.test_conf.weight_test_res, clip=clip)
+        self.assertEqual(pred_res.shape,self.test_conf.weight_test_res.shape)
+        np.testing.assert_allclose(pred_res, test_res, atol=self.clip_toll)
         
-        def setUp(self) -> None:
-            self.clip_toll = test_conf.weight_test_res.numpy().mean()/1000
+    # def test_norm_weights_pass(self):
+    #     test_res = weight_test_res/msk_test_res.sum(axis=0)
+    #     toll = test_res.mean()/1000
+    #     pred_res = norm_weights_pass(traj_is_weights=weight_test_res, 
+    #                                  is_msk=msk_test_res)
+    #     self.assertEqual(pred_res.shape,weight_test_res.shape)
+    #     np.testing.assert_allclose(pred_res.numpy(), test_res.numpy(), 
+    #                                atol=toll.numpy())
+    
+    def test_norm_weights_vanilla(self):
+        """Vanilla IS with non-bias averaging:
+        $w_{H,i}=\prod_{t=0}^{H}w_{t,i}$
         
-        def test_clip_weights(self):
-            clip = 1.2
-            test_res = test_conf.weight_test_res.clamp(max=1.2, min=1/1.2)
-            assert len(test_conf.weight_test_res.shape) == 2, "Incorrect test input dimensions"
-            pred_res = clip_weights(test_conf.weight_test_res, clip=clip)
-            self.assertEqual(pred_res.shape,test_conf.weight_test_res.shape)
-            np.testing.assert_allclose(pred_res, test_res, atol=self.clip_toll)
-            
-        def test_clip_weights_pass(self):
-            clip = 1.2
-            test_res = copy.deepcopy(test_conf.weight_test_res)
-            assert len(test_conf.weight_test_res.shape) == 2, "Incorrect test input dimensions"
-            pred_res = clip_weights_pass(test_conf.weight_test_res, clip=clip)
-            self.assertEqual(pred_res.shape,test_conf.weight_test_res.shape)
-            np.testing.assert_allclose(pred_res, test_res, atol=self.clip_toll)
-            
-        # def test_norm_weights_pass(self):
-        #     test_res = weight_test_res/msk_test_res.sum(axis=0)
-        #     toll = test_res.mean()/1000
-        #     pred_res = norm_weights_pass(traj_is_weights=weight_test_res, 
-        #                                  is_msk=msk_test_res)
-        #     self.assertEqual(pred_res.shape,weight_test_res.shape)
-        #     np.testing.assert_allclose(pred_res.numpy(), test_res.numpy(), 
-        #                                atol=toll.numpy())
+        $\frac{1}/{n}\sum_{i=1}^{n}\sum_{t=0}^{H}r_{t}\gamma^{t}w_{H,i}$
         
-        def test_norm_weights_vanilla(self):
-                denom = test_conf.weight_test_res.shape[0]
-                test_res = test_conf.weight_test_res/denom
-                toll = test_res.mean()/1000
-                calculator = VanillaNormWeights()
-                assert len(test_conf.weight_test_res.shape) == 2, "Incorrect test input dimensions"
-                assert len(test_conf.msk_test_res.shape) == 2, "Incorrect test input dimensions"
-                pred_res = calculator(
-                    traj_is_weights=test_conf.weight_test_res, 
-                    is_msk=test_conf.msk_test_res
-                    )
-                self.assertEqual(pred_res.shape,test_conf.weight_test_res.shape)
-                np.testing.assert_allclose(pred_res.numpy(), test_res.numpy(), 
-                                        atol=toll.numpy())
+        => The output should be of the form:
+        \frac{1}/{n}w_{H,i}
+        """
+        denom = self.test_conf.traj_is_weights_is.shape[0]
+        test_res = self.test_conf.traj_is_weights_is/denom
+        toll = test_res.mean()/1000
+        calculator = VanillaNormWeights()
+        assert len(self.test_conf.traj_is_weights_is.shape) == 2, "Incorrect test input dimensions"
+        assert len(self.test_conf.msk_test_res.shape) == 2, "Incorrect test input dimensions"
+        pred_res = calculator(
+            traj_is_weights=self.test_conf.traj_is_weights_is, 
+            is_msk=self.test_conf.msk_test_res
+            )
+        self.assertEqual(pred_res.shape,self.test_conf.traj_is_weights_is.shape)
+        np.testing.assert_allclose(pred_res.numpy(), test_res.numpy(), 
+                                atol=toll.numpy())
+    
+    def test_norm_weights_wis(self):
+        """Vanilla IS with WIS averaging:
+        w_{H,i}=\prod_{t=0}^{H}w_{t,i}
+        w_{H} = \sum_{i=1}^{n} w_{H,i}
+        $\frac{1}/{w_{H}}\sum_{i=1}^{n}\sum_{t=0}^{H}r_{t,i}\gamma^{t}w_{H,i}$
+        => The output should be of the form:
+        \frac{1}/{w_{H}}w_{H,i}
+        """
+        # test_conf.traj_is_weights_is defines the Vanilla IS one step weights 
+        # i.e., w_{H,i}
+        # Summing to define \sum_{i=1}^{n}\prod_{t=0}^{H}w_{t,i}
+        # The input weights are the same for all steps in a trajectory, 
+        # therefore, sum across the trajectories
         
-        def test_norm_weights_wis(self):
-            denom = test_conf.weight_test_res.sum(dim=0)
-            test_res = test_conf.weight_test_res/denom
-            toll = test_res.mean()/1000
-            calculator = WISWeightNorm()
-            assert len(test_conf.weight_test_res.shape) == 2, "Incorrect test input dimensions"
-            assert len(test_conf.msk_test_res.shape) == 2, "Incorrect test input dimensions"
-            pred_res = calculator(
-                traj_is_weights=test_conf.weight_test_res, 
-                is_msk=test_conf.msk_test_res
-                )
-            self.assertEqual(pred_res.shape,test_conf.weight_test_res.shape)
-            np.testing.assert_allclose(pred_res.numpy(), test_res.numpy(), 
-                                    atol=toll.numpy())
+        # Find the final weight for each trajectory
+        term_idx = [len(i) for i in self.test_conf.test_act_indiv_weights]
+        term_weights = []
+        for idx, traj in zip(term_idx, self.test_conf.traj_is_weights_is):
+            term_weights.append(traj[idx-1])
+        term_weights = torch.tensor(term_weights)
+        # Sum over the weights as we are not doing cumulative
+        denom = term_weights.sum().repeat((1,max(term_idx)))
+        denom_toll = denom.squeeze().mean().numpy()/1000
+        test_res = self.test_conf.traj_is_weights_is/denom
+        toll = test_res.mean()/1000
+        calculator = WISWeightNorm()
+        norm = calculator.calc_norm(
+            traj_is_weights=self.test_conf.traj_is_weights_is, 
+            is_msk=self.test_conf.msk_test_res
+        )
+        np.testing.assert_allclose(
+            norm.numpy(), denom.numpy(), 
+            atol=denom_toll
+            )
+        assert len(self.test_conf.traj_is_weights_is.shape) == 2, "Incorrect test input dimensions"
+        assert len(self.test_conf.msk_test_res.shape) == 2, "Incorrect test input dimensions"
+        pred_res = calculator(
+            traj_is_weights=self.test_conf.traj_is_weights_is, 
+            is_msk=self.test_conf.msk_test_res
+            )
+        self.assertEqual(pred_res.shape,self.test_conf.traj_is_weights_is.shape)
+        np.testing.assert_allclose(pred_res.numpy(), test_res.numpy(), 
+                                atol=toll.numpy())
+        
+    def test_norm_weights_wis_cum(self):
+        """Vanilla IS with WIS cumulative averaging:
+        $w_{H,i}=\prod_{t=0}^{H}w_{t,i}$
+        $w_{H,t} = \sum_{i=1}^{n} w_{H,i}\mathbb{1}_{m_{i,t}\neq=0}$
+        $\sum_{i=1}^{n}\sum_{t=0}^{H}r_{t,i}\gamma^{t}\frac{1}/{w_{H,t}}w_{H,i}$
+        => The output should be of the form:
+        $\frac{1}/{w_{H,t}}w_{H,i}$
+        """
+        # Sum across the trajectories to get the time t cumulative weight
+        # Note, the weight is already cumulative due to PD input
+        denom = self.test_conf.traj_is_weights_is.sum(dim=0, keepdim=True)
+        denom_toll = denom.squeeze().mean().numpy()/1000
+        test_res = self.test_conf.traj_is_weights_is/denom
+        toll = test_res.mean()/1000
+        calculator = WISWeightNorm(cumulative=True)
+        norm = calculator.calc_norm(
+            traj_is_weights=self.test_conf.traj_is_weights_is, 
+            is_msk=self.test_conf.msk_test_res
+        )
+        np.testing.assert_allclose(
+            norm.numpy(), denom.numpy(), 
+            atol=denom_toll
+            )
+        assert len(self.test_conf.traj_is_weights_is.shape) == 2, "Incorrect test input dimensions"
+        assert len(self.test_conf.msk_test_res.shape) == 2, "Incorrect test input dimensions"
+        pred_res = calculator(
+            traj_is_weights=self.test_conf.traj_is_weights_is, 
+            is_msk=self.test_conf.msk_test_res
+            )
+        self.assertEqual(pred_res.shape,self.test_conf.traj_is_weights_is.shape)
+        np.testing.assert_allclose(pred_res.numpy(), test_res.numpy(), 
+                                atol=toll.numpy())
 
-        def test_norm_weights_wis_smooth(self):
-            smooth_eps = 0.00000001
-            denom = weight_test_res_alter.sum(dim=0)+smooth_eps
-            test_res = weight_test_res_alter/denom
-            toll = test_res.nanmean()/1000
-            calculator = WISWeightNorm(smooth_eps=smooth_eps)
-            assert len(weight_test_res_alter.shape) == 2, "Incorrect test input dimensions"
-            assert len(test_conf.msk_test_res.shape) == 2, "Incorrect test input dimensions"
-            pred_res = calculator(
-                traj_is_weights=weight_test_res_alter, 
-                is_msk=test_conf.msk_test_res
-                )
-            self.assertEqual(pred_res.shape,weight_test_res_alter.shape)
-            np.testing.assert_allclose(pred_res.numpy(), test_res.numpy(), 
-                                    atol=toll.numpy())
-            
-        def test_norm_weights_wis_no_smooth(self):
-            denom = weight_test_res_alter.sum(dim=0)
-            test_res = weight_test_res_alter/denom
-            toll = test_res.nanmean()/1000
-            calculator = WISWeightNorm()
-            assert len(weight_test_res_alter.shape) == 2, "Incorrect test input dimensions"
-            assert len(test_conf.msk_test_res.shape) == 2, "Incorrect test input dimensions"            
-            pred_res = calculator(traj_is_weights=weight_test_res_alter, 
-                                is_msk=test_conf.msk_test_res)
-            self.assertEqual(pred_res.shape,weight_test_res_alter.shape)
-            np.testing.assert_allclose(pred_res.numpy(), test_res.numpy(), 
-                                    atol=toll.numpy(), equal_nan=True)
-            
-        def test_norm_weights_wis_smooth_discount(self):
-            smooth_eps = 0.00000001
-            discount=0.99
-            discnt_tens = torch.full(
-                weight_test_res_alter.shape,
-                discount
-                )
-            discnt_pows = torch.arange(
-                0, weight_test_res_alter.shape[1])[None,:].repeat(
-                    weight_test_res_alter.shape[0],1
-                    )
-            discnt_tens = torch.pow(discnt_tens,discnt_pows)
-            denom = torch.mul(
-                weight_test_res_alter,
-                discnt_tens
+    
+    def test_norm_weights_wis_smooth(self):
+        smooth_eps = 0.00000001
+        term_idx = [
+            len(i) for i in self.test_conf.test_act_indiv_weights_alter
+            ]
+        term_weights = []
+        for idx, traj in zip(
+            term_idx, 
+            self.test_conf.traj_is_weights_is_alter
+            ):
+            term_weights.append(traj[idx-1])
+        term_weights = torch.tensor(term_weights)
+        # Sum over the weights as we are not doing cumulative
+        denom = term_weights.sum().repeat((1,max(term_idx))) + smooth_eps
+        denom_toll = denom.squeeze().mean().numpy()/1000
+        test_res = self.test_conf.traj_is_weights_is_alter/denom
+        toll = test_res.mean()/1000
+        calculator = WISWeightNorm(smooth_eps=smooth_eps)
+        norm = calculator.calc_norm(
+            traj_is_weights=self.test_conf.traj_is_weights_is_alter, 
+            is_msk=self.test_conf.msk_test_res
+        )
+        np.testing.assert_allclose(
+            norm.numpy(), denom.numpy(), 
+            atol=denom_toll
             )
-            denom = denom.sum(dim=0)+smooth_eps
-            test_res = weight_test_res_alter/denom
-            toll = test_res.nanmean()/1000
-            calculator = WISWeightNorm(
-                smooth_eps=smooth_eps,
-                discount=discount
-                )
-            pred_res = calculator(traj_is_weights=weight_test_res_alter, 
-                                is_msk=test_conf.msk_test_res)
-            self.assertEqual(pred_res.shape,weight_test_res_alter.shape)
-            np.testing.assert_allclose(pred_res.numpy(), test_res.numpy(), 
-                                    atol=toll.numpy())
+        assert len(self.test_conf.traj_is_weights_is_alter.shape) == 2, "Incorrect test input dimensions"
+        assert len(self.test_conf.msk_test_res.shape) == 2, "Incorrect test input dimensions"
+        pred_res = calculator(
+            traj_is_weights=self.test_conf.traj_is_weights_is_alter, 
+            is_msk=self.test_conf.msk_test_res
+            )
+        self.assertEqual(pred_res.shape,self.test_conf.traj_is_weights_is_alter.shape)
+        np.testing.assert_allclose(pred_res.numpy(), test_res.numpy(), 
+                                atol=toll.numpy())
+        
+    
+    def test_norm_weights_wis_no_smooth(self):
+        term_idx = [
+            len(i) for i in self.test_conf.test_act_indiv_weights_alter
+            ]
+        term_weights = []
+        for idx, traj in zip(
+            term_idx, 
+            self.test_conf.traj_is_weights_is_alter
+            ):
+            term_weights.append(traj[idx-1])
+        term_weights = torch.tensor(term_weights)
+        # Sum over the weights as we are not doing cumulative
+        denom = term_weights.sum().repeat((1,max(term_idx)))
+        denom_toll = denom.squeeze().mean().numpy()/1000
+        test_res = self.test_conf.traj_is_weights_is_alter/denom
+        toll = test_res.mean()/1000
+        calculator = WISWeightNorm()
+        norm = calculator.calc_norm(
+            traj_is_weights=self.test_conf.traj_is_weights_is_alter, 
+            is_msk=self.test_conf.msk_test_res
+        )
+        np.testing.assert_allclose(
+            norm.numpy(), denom.numpy(), 
+            atol=denom_toll
+            )
+        assert len(self.test_conf.traj_is_weights_is_alter.shape) == 2, "Incorrect test input dimensions"
+        assert len(self.test_conf.msk_test_res.shape) == 2, "Incorrect test input dimensions"
+        pred_res = calculator(
+            traj_is_weights=self.test_conf.traj_is_weights_is_alter, 
+            is_msk=self.test_conf.msk_test_res
+            )
+        self.assertEqual(pred_res.shape,self.test_conf.traj_is_weights_is_alter.shape)
+        np.testing.assert_allclose(pred_res.numpy(), test_res.numpy(), 
+                                atol=toll.numpy())
 
-        def test_norm_weights_wis_no_smooth_discount(self):
-            discount=0.99
-            discnt_tens = torch.full(
-                weight_test_res_alter.shape,
-                discount
-                )
-            discnt_pows = torch.arange(
-                0, weight_test_res_alter.shape[1])[None,:].repeat(
-                    weight_test_res_alter.shape[0],1
-                    )
-            discnt_tens = torch.pow(discnt_tens,discnt_pows)
-            denom = torch.mul(
-                weight_test_res_alter,
-                discnt_tens
+    def test_norm_weights_wis_smooth_avg(self):
+        smooth_eps = 0.00000001
+        term_idx = [
+            len(i) for i in self.test_conf.test_act_indiv_weights_alter
+            ]
+        term_weights = []
+        for idx, traj in zip(
+            term_idx, 
+            self.test_conf.traj_is_weights_is_alter
+            ):
+            term_weights.append(traj[idx-1])
+        term_weights = torch.tensor(term_weights)
+        # Sum over the weights as we are not doing cumulative
+        denom = term_weights.sum().repeat((1,max(term_idx)))
+        denom = (denom/len(term_idx)) + smooth_eps
+        denom_toll = denom.squeeze().mean().numpy()/1000
+        test_res = self.test_conf.traj_is_weights_is_alter/denom
+        toll = test_res.mean()/1000
+        calculator = WISWeightNorm(smooth_eps=smooth_eps, avg_denom=True)
+        norm = calculator.calc_norm(
+            traj_is_weights=self.test_conf.traj_is_weights_is_alter, 
+            is_msk=self.test_conf.msk_test_res
+        )
+        np.testing.assert_allclose(
+            norm.numpy(), denom.numpy(), 
+            atol=denom_toll
             )
-            denom = denom.sum(dim=0)
-            test_res = weight_test_res_alter/denom
-            toll = test_res.nanmean()/1000
-            calculator = WISWeightNorm(
-                discount=discount
-                )
-            assert len(weight_test_res_alter.shape) == 2, "Incorrect test input dimensions"
-            assert len(test_conf.msk_test_res.shape) == 2, "Incorrect test input dimensions"            
-            pred_res = calculator(traj_is_weights=weight_test_res_alter, 
-                                is_msk=test_conf.msk_test_res)
-            self.assertEqual(pred_res.shape,weight_test_res_alter.shape)
-            np.testing.assert_allclose(pred_res.numpy(), test_res.numpy(), 
-                                    atol=toll.numpy())
+        assert len(self.test_conf.traj_is_weights_is_alter.shape) == 2, "Incorrect test input dimensions"
+        assert len(self.test_conf.msk_test_res.shape) == 2, "Incorrect test input dimensions"
+        pred_res = calculator(
+            traj_is_weights=self.test_conf.traj_is_weights_is_alter, 
+            is_msk=self.test_conf.msk_test_res
+            )
+        self.assertEqual(pred_res.shape,self.test_conf.traj_is_weights_is_alter.shape)
+        np.testing.assert_allclose(pred_res.numpy(), test_res.numpy(), 
+                                atol=toll.numpy())
 
-        def test_norm_weights_wis_smooth_avg(self):
-            smooth_eps = 0.00000001
-            time_t_freq = test_conf.msk_test_res.sum(dim=0, keepdim=True).repeat(
-                test_conf.msk_test_res.shape[0],1
+    def test_norm_weights_wis_no_smooth_avg(self):
+        term_idx = [
+            len(i) for i in self.test_conf.test_act_indiv_weights_alter
+            ]
+        term_weights = []
+        for idx, traj in zip(
+            term_idx, 
+            self.test_conf.traj_is_weights_is_alter
+            ):
+            term_weights.append(traj[idx-1])
+        term_weights = torch.tensor(term_weights)
+        # Sum over the weights as we are not doing cumulative
+        denom = term_weights.sum().repeat((1,max(term_idx)))
+        denom = (denom/len(term_idx))
+        denom_toll = denom.squeeze().mean().numpy()/1000
+        test_res = self.test_conf.traj_is_weights_is_alter/denom
+        toll = test_res.mean()/1000
+        calculator = WISWeightNorm(avg_denom=True)
+        norm = calculator.calc_norm(
+            traj_is_weights=self.test_conf.traj_is_weights_is_alter, 
+            is_msk=self.test_conf.msk_test_res
+        )
+        np.testing.assert_allclose(
+            norm.numpy(), denom.numpy(), 
+            atol=denom_toll
             )
-            denom = weight_test_res_alter/time_t_freq
-            denom = denom.sum(dim=0)+smooth_eps
-            test_res = weight_test_res_alter/denom
-            toll = test_res.nanmean()/1000
-            calculator = WISWeightNorm(
-                smooth_eps=smooth_eps,
-                avg_denom=True
-                )
-            assert len(weight_test_res_alter.shape) == 2, "Incorrect test input dimensions"
-            assert len(test_conf.msk_test_res.shape) == 2, "Incorrect test input dimensions"            
-            pred_res = calculator(traj_is_weights=weight_test_res_alter, 
-                                is_msk=test_conf.msk_test_res)
-            self.assertEqual(pred_res.shape,weight_test_res_alter.shape)
-            np.testing.assert_allclose(pred_res.numpy(), test_res.numpy(), 
-                                    atol=toll.numpy())
+        assert len(self.test_conf.traj_is_weights_is_alter.shape) == 2, "Incorrect test input dimensions"
+        assert len(self.test_conf.msk_test_res.shape) == 2, "Incorrect test input dimensions"
+        pred_res = calculator(
+            traj_is_weights=self.test_conf.traj_is_weights_is_alter, 
+            is_msk=self.test_conf.msk_test_res
+            )
+        self.assertEqual(pred_res.shape,self.test_conf.traj_is_weights_is_alter.shape)
+        np.testing.assert_allclose(pred_res.numpy(), test_res.numpy(), 
+                                atol=toll.numpy())
+        
+@parameterized_class(test_configs_fmt_class)
+class UtilsTestPD(unittest.TestCase):
+    
+    test_conf:TestConfig
+    
+    def test_norm_weights_vanilla(self):
+        """PD with non-bias averaging:
+        $\frac{1}/{n}\sum_{i=1}^{n}\sum_{t=0}^{H}r_{t}\gamma^{t}\prod_{t=0}^{t'}w_{t,i}$
+        
+        => The output should be of the form:
+        $\frac{1}/{n}\prod_{t=0}^{t'}w_{t,i}$
+        """
+        denom = self.test_conf.traj_is_weights_pd.shape[0]
+        test_res = self.test_conf.traj_is_weights_pd/denom
+        toll = test_res.mean()/1000
+        calculator = VanillaNormWeights()
+        assert len(self.test_conf.traj_is_weights_pd.shape) == 2, "Incorrect test input dimensions"
+        assert len(self.test_conf.msk_test_res.shape) == 2, "Incorrect test input dimensions"
+        pred_res = calculator(
+            traj_is_weights=self.test_conf.traj_is_weights_pd, 
+            is_msk=self.test_conf.msk_test_res
+            )
+        self.assertEqual(pred_res.shape,self.test_conf.traj_is_weights_pd.shape)
+        np.testing.assert_allclose(pred_res.numpy(), test_res.numpy(), 
+                                atol=toll.numpy())
+    
+    def test_norm_weights_wpd(self):
+        """WPD:
+        w_{H,i}=\prod_{t=0}^{H}w_{t,i}
+        w_{H} = \sum_{i=1}^{n} w_{H,i}
+        $\frac{1}/{w_{H}}\sum_{i=1}^{n}\sum_{t=0}^{H}r_{t,i}\gamma^{t}\prod_{t=0}^{t'}w_{t,i}$
+        => The output should be of the form:
+        \frac{1}/{w_{H}}\prod_{t=0}^{t'}w_{t,i}
+        """
+        term_idx = [len(i) for i in self.test_conf.test_act_indiv_weights]
+        term_weights = []
+        for idx, traj in zip(term_idx, self.test_conf.traj_is_weights_pd):
+            term_weights.append(traj[idx-1])
+        term_weights = torch.tensor(term_weights)
+        # Sum over the weights as we are not doing cumulative
+        denom = term_weights.sum().repeat((1,max(term_idx)))
+        denom_toll = denom.squeeze().mean().numpy()/1000
+        test_res = self.test_conf.traj_is_weights_pd/denom
+        toll = test_res.mean()/1000
+        calculator = WISWeightNorm()
+        norm = calculator.calc_norm(
+            traj_is_weights=self.test_conf.traj_is_weights_pd, 
+            is_msk=self.test_conf.msk_test_res
+        )
+        np.testing.assert_allclose(
+            norm.numpy(), denom.numpy(), 
+            atol=denom_toll
+            )
+        assert len(self.test_conf.traj_is_weights_pd.shape) == 2, "Incorrect test input dimensions"
+        assert len(self.test_conf.msk_test_res.shape) == 2, "Incorrect test input dimensions"
+        pred_res = calculator(
+            traj_is_weights=self.test_conf.traj_is_weights_pd, 
+            is_msk=self.test_conf.msk_test_res
+            )
+        self.assertEqual(pred_res.shape,self.test_conf.traj_is_weights_pd.shape)
+        np.testing.assert_allclose(pred_res.numpy(), test_res.numpy(), 
+                                atol=toll.numpy())
+        
+    def test_norm_weights_wpd_cum(self):
+        """WPD:
+        w_{t',i}=\prod_{t=0}^{t'}w_{t,i}
+        w_{t'} = \sum_{i=1}^{n} w_{t',i}
+        $\frac{1}/{w_{t'}}\sum_{i=1}^{n}\sum_{t=0}^{H}r_{t,i}\gamma^{t}\prod_{t=0}^{t'}w_{t,i}$
+        => The output should be of the form:
+        \frac{1}/{w_{t'}}\prod_{t=0}^{t'}w_{t,i}
+        """
+        # Sum across the trajectories to get the time t cumulative weight
+        # Note, the weight is already cumulative due to PD input
+        denom = self.test_conf.traj_is_weights_pd.sum(dim=0, keepdim=True)
+        # No need to alter shape
+        denom_toll = denom.squeeze().mean().numpy()/1000
+        test_res = self.test_conf.traj_is_weights_pd/denom
+        toll = test_res.mean()/1000
+        calculator = WISWeightNorm(cumulative=True)
+        norm = calculator.calc_norm(
+            traj_is_weights=self.test_conf.traj_is_weights_pd, 
+            is_msk=self.test_conf.msk_test_res
+        )
+        np.testing.assert_allclose(
+            norm.numpy(), denom.numpy(), 
+            atol=denom_toll
+            )
+        assert len(self.test_conf.traj_is_weights_pd.shape) == 2, "Incorrect test input dimensions"
+        assert len(self.test_conf.msk_test_res.shape) == 2, "Incorrect test input dimensions"
+        pred_res = calculator(
+            traj_is_weights=self.test_conf.traj_is_weights_pd, 
+            is_msk=self.test_conf.msk_test_res
+            )
+        self.assertEqual(pred_res.shape,self.test_conf.traj_is_weights_pd.shape)
+        np.testing.assert_allclose(pred_res.numpy(), test_res.numpy(), 
+                                atol=toll.numpy())
 
-        def test_norm_weights_wis_no_smooth_avg(self):
-            time_t_freq = test_conf.msk_test_res.sum(dim=0, keepdim=True).repeat(
-                test_conf.msk_test_res.shape[0],1
+    
+    def test_norm_weights_wpd_smooth(self):
+        smooth_eps = 0.00000001
+        term_idx = [
+            len(i) for i in self.test_conf.test_act_indiv_weights_alter
+            ]
+        term_weights = []
+        for idx, traj in zip(
+            term_idx, 
+            self.test_conf.traj_is_weights_pd_alter
+            ):
+            term_weights.append(traj[idx-1])
+        term_weights = torch.tensor(term_weights)
+        # Sum over the weights as we are not doing cumulative
+        denom = term_weights.sum().repeat((1,max(term_idx))) + smooth_eps
+        denom_toll = denom.squeeze().mean().numpy()/1000
+        test_res = self.test_conf.traj_is_weights_pd_alter/denom
+        toll = test_res.mean()/1000
+        calculator = WISWeightNorm(smooth_eps=smooth_eps)
+        norm = calculator.calc_norm(
+            traj_is_weights=self.test_conf.traj_is_weights_pd_alter, 
+            is_msk=self.test_conf.msk_test_res
+        )
+        np.testing.assert_allclose(
+            norm.numpy(), denom.numpy(), 
+            atol=denom_toll
             )
-            denom = weight_test_res_alter/time_t_freq
-            denom = denom.sum(dim=0)
-            test_res = weight_test_res_alter/denom
-            toll = test_res.nanmean()/1000
-            calculator = WISWeightNorm(
-                avg_denom=True
-                )
-            assert len(weight_test_res_alter.shape) == 2, "Incorrect test input dimensions"
-            assert len(test_conf.msk_test_res.shape) == 2, "Incorrect test input dimensions"            
-            pred_res = calculator(traj_is_weights=weight_test_res_alter, 
-                                is_msk=test_conf.msk_test_res)
-            self.assertEqual(pred_res.shape,weight_test_res_alter.shape)
-            np.testing.assert_allclose(pred_res.numpy(), test_res.numpy(), 
-                                    atol=toll.numpy())
+        assert len(self.test_conf.traj_is_weights_pd_alter.shape) == 2, "Incorrect test input dimensions"
+        assert len(self.test_conf.msk_test_res.shape) == 2, "Incorrect test input dimensions"
+        pred_res = calculator(
+            traj_is_weights=self.test_conf.traj_is_weights_pd_alter, 
+            is_msk=self.test_conf.msk_test_res
+            )
+        self.assertEqual(pred_res.shape,self.test_conf.traj_is_weights_pd_alter.shape)
+        np.testing.assert_allclose(pred_res.numpy(), test_res.numpy(), 
+                                atol=toll.numpy())
+        
+    
+    def test_norm_weights_wpd_no_smooth(self):
+        term_idx = [
+            len(i) for i in self.test_conf.test_act_indiv_weights_alter
+            ]
+        term_weights = []
+        for idx, traj in zip(
+            term_idx, 
+            self.test_conf.traj_is_weights_pd_alter
+            ):
+            term_weights.append(traj[idx-1])
+        term_weights = torch.tensor(term_weights)
+        # Sum over the weights as we are not doing cumulative
+        denom = term_weights.sum().repeat((1,max(term_idx)))
+        denom_toll = denom.squeeze().mean().numpy()/1000
+        test_res = self.test_conf.traj_is_weights_pd_alter/denom
+        toll = test_res.mean()/1000
+        calculator = WISWeightNorm()
+        norm = calculator.calc_norm(
+            traj_is_weights=self.test_conf.traj_is_weights_pd_alter, 
+            is_msk=self.test_conf.msk_test_res
+        )
+        np.testing.assert_allclose(
+            norm.numpy(), denom.numpy(), 
+            atol=denom_toll
+            )
+        assert len(self.test_conf.traj_is_weights_pd_alter.shape) == 2, "Incorrect test input dimensions"
+        assert len(self.test_conf.msk_test_res.shape) == 2, "Incorrect test input dimensions"
+        pred_res = calculator(
+            traj_is_weights=self.test_conf.traj_is_weights_pd_alter, 
+            is_msk=self.test_conf.msk_test_res
+            )
+        self.assertEqual(pred_res.shape,self.test_conf.traj_is_weights_pd_alter.shape)
+        np.testing.assert_allclose(pred_res.numpy(), test_res.numpy(), 
+                                atol=toll.numpy())
 
-        def test_norm_weights_wis_smooth_discount_avg(self):
-            smooth_eps = 0.00000001
-            discount=0.99
-            discnt_tens = torch.full(
-                weight_test_res_alter.shape,
-                discount
-                )
-            discnt_pows = torch.arange(
-                0, weight_test_res_alter.shape[1])[None,:].repeat(
-                    weight_test_res_alter.shape[0],1
-                    )
-            discnt_tens = torch.pow(discnt_tens,discnt_pows)
-            denom = torch.mul(
-                weight_test_res_alter,
-                discnt_tens
+    def test_norm_weights_wpd_smooth_avg(self):
+        smooth_eps = 0.00000001
+        term_idx = [
+            len(i) for i in self.test_conf.test_act_indiv_weights_alter
+            ]
+        term_weights = []
+        for idx, traj in zip(
+            term_idx, 
+            self.test_conf.traj_is_weights_pd_alter
+            ):
+            term_weights.append(traj[idx-1])
+        term_weights = torch.tensor(term_weights)
+        # Sum over the weights as we are not doing cumulative
+        denom = term_weights.sum().repeat((1,max(term_idx)))
+        denom = (denom/len(term_idx)) + smooth_eps
+        denom_toll = denom.squeeze().mean().numpy()/1000
+        test_res = self.test_conf.traj_is_weights_pd_alter/denom
+        toll = test_res.mean()/1000
+        calculator = WISWeightNorm(smooth_eps=smooth_eps, avg_denom=True)
+        norm = calculator.calc_norm(
+            traj_is_weights=self.test_conf.traj_is_weights_pd_alter, 
+            is_msk=self.test_conf.msk_test_res
+        )
+        np.testing.assert_allclose(
+            norm.numpy(), denom.numpy(), 
+            atol=denom_toll
             )
-            time_t_freq = test_conf.msk_test_res.sum(dim=0, keepdim=True).repeat(
-                test_conf.msk_test_res.shape[0],1
+        assert len(self.test_conf.traj_is_weights_pd_alter.shape) == 2, "Incorrect test input dimensions"
+        assert len(self.test_conf.msk_test_res.shape) == 2, "Incorrect test input dimensions"
+        pred_res = calculator(
+            traj_is_weights=self.test_conf.traj_is_weights_pd_alter, 
+            is_msk=self.test_conf.msk_test_res
             )
-            denom = denom/time_t_freq
-            denom = denom.sum(dim=0)+smooth_eps
-            test_res = weight_test_res_alter/denom
-            toll = test_res.nanmean()/1000
-            calculator = WISWeightNorm(
-                smooth_eps=smooth_eps,
-                discount=discount,
-                avg_denom=True
-                )
-            assert len(weight_test_res_alter.shape) == 2, "Incorrect test input dimensions"
-            assert len(test_conf.msk_test_res.shape) == 2, "Incorrect test input dimensions"
-            pred_res = calculator(traj_is_weights=weight_test_res_alter, 
-                                is_msk=test_conf.msk_test_res)
-            self.assertEqual(pred_res.shape,weight_test_res_alter.shape)
-            np.testing.assert_allclose(pred_res.numpy(), test_res.numpy(), 
-                                    atol=toll.numpy())
+        self.assertEqual(pred_res.shape,self.test_conf.traj_is_weights_pd_alter.shape)
+        np.testing.assert_allclose(pred_res.numpy(), test_res.numpy(), 
+                                atol=toll.numpy())
 
-        def test_norm_weights_wis_no_smooth_discount_avg(self):
-            discount=0.99
-            discnt_tens = torch.full(
-                weight_test_res_alter.shape,
-                discount
-                )
-            discnt_pows = torch.arange(
-                0, weight_test_res_alter.shape[1])[None,:].repeat(
-                    weight_test_res_alter.shape[0],1
-                    )
-            discnt_tens = torch.pow(discnt_tens,discnt_pows)
-            denom = torch.mul(
-                weight_test_res_alter,
-                discnt_tens
+    def test_norm_weights_wpd_no_smooth_avg(self):
+        term_idx = [
+            len(i) for i in self.test_conf.test_act_indiv_weights_alter
+            ]
+        term_weights = []
+        for idx, traj in zip(
+            term_idx, 
+            self.test_conf.traj_is_weights_pd_alter
+            ):
+            term_weights.append(traj[idx-1])
+        term_weights = torch.tensor(term_weights)
+        # Sum over the weights as we are not doing cumulative
+        denom = term_weights.sum().repeat((1,max(term_idx)))
+        denom = (denom/len(term_idx))
+        denom_toll = denom.squeeze().mean().numpy()/1000
+        test_res = self.test_conf.traj_is_weights_pd_alter/denom
+        toll = test_res.mean()/1000
+        calculator = WISWeightNorm(avg_denom=True)
+        norm = calculator.calc_norm(
+            traj_is_weights=self.test_conf.traj_is_weights_pd_alter, 
+            is_msk=self.test_conf.msk_test_res
+        )
+        np.testing.assert_allclose(
+            norm.numpy(), denom.numpy(), 
+            atol=denom_toll
             )
-            time_t_freq = test_conf.msk_test_res.sum(dim=0, keepdim=True).repeat(
-                test_conf.msk_test_res.shape[0],1
+        assert len(self.test_conf.traj_is_weights_pd_alter.shape) == 2, "Incorrect test input dimensions"
+        assert len(self.test_conf.msk_test_res.shape) == 2, "Incorrect test input dimensions"
+        pred_res = calculator(
+            traj_is_weights=self.test_conf.traj_is_weights_pd_alter, 
+            is_msk=self.test_conf.msk_test_res
             )
-            denom = denom/time_t_freq
-            denom = denom.sum(dim=0)
-            test_res = weight_test_res_alter/denom
-            toll = test_res.nanmean()/1000
-            calculator = WISWeightNorm(
-                discount=0.99,
-                avg_denom=True
-                )
-            assert len(weight_test_res_alter.shape) == 2, "Incorrect test input dimensions"
-            assert len(test_conf.msk_test_res.shape) == 2, "Incorrect test input dimensions"            
-            pred_res = calculator(traj_is_weights=weight_test_res_alter, 
-                                is_msk=test_conf.msk_test_res)
-            self.assertEqual(pred_res.shape,weight_test_res_alter.shape)
-            np.testing.assert_allclose(pred_res.numpy(), test_res.numpy(), 
-                                    atol=toll.numpy())
+        self.assertEqual(pred_res.shape,self.test_conf.traj_is_weights_pd_alter.shape)
+        np.testing.assert_allclose(pred_res.numpy(), test_res.numpy(), 
+                                atol=toll.numpy())

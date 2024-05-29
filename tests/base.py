@@ -1,7 +1,8 @@
 from dataclasses import dataclass
-from typing import Any, List
+from typing import Any, List, Dict
 import numpy as np
 import torch
+import copy
 
 @dataclass
 class TestConfig:
@@ -16,8 +17,45 @@ class TestConfig:
     test_dm_sa_values:List[List[float]]
     test_act_indiv_weights:List[np.ndarray[float]] = None
     weight_test_res:torch.Tensor = None
+    traj_is_weights_is:torch.Tensor = None
+    traj_is_weights_pd:torch.Tensor = None
+    weight_test_res_alter:torch.Tensor = None
+    traj_is_weights_is_alter:torch.Tensor = None
+    traj_is_weights_pd_alter:torch.Tensor = None
     msk_test_res:torch.Tensor = None
     reward_test_res:torch.Tensor = None
+    
+    @staticmethod
+    def __get_traj_weights(
+        weight_test_res:torch.Tensor, 
+        msk_test_res:torch.Tensor
+        ):
+        # Taking product to define \prod_{t=0}^{H}w_{t,i}
+        _traj_is_weights_sub = weight_test_res.detach().clone()
+        _traj_is_weights_sub[msk_test_res == 0] = 1
+        _traj_is_weights_is = _traj_is_weights_sub.prod(dim=1, keepdim=True)
+        traj_is_weights_is = _traj_is_weights_is.repeat(
+            (1,weight_test_res.shape[1])
+            )
+        traj_is_weights_pd = _traj_is_weights_sub.cumprod(
+            dim=1)
+        traj_is_weights_is[msk_test_res == 0] = 0
+        traj_is_weights_pd[msk_test_res == 0] = 0
+        return traj_is_weights_is, traj_is_weights_pd
+    
+    @staticmethod
+    def __get_weight_mask_matrix(
+        test_act_indiv_weights:List[np.array]
+        ):
+        max_len = max([len(i) for i in test_act_indiv_weights])
+        weight_test_res = []
+        msk_test_res = []
+        for i in test_act_indiv_weights:
+            weight_test_res.append(np.pad(i,(0,max_len-len(i))).tolist())
+            msk_test_res.append(
+                np.pad(i.astype(bool),(0,max_len-len(i))).tolist()
+                )
+        return torch.Tensor(weight_test_res), torch.Tensor(msk_test_res).float()
     
     def __post_init__(self):
         test_act_indiv_weights = []
@@ -27,17 +65,39 @@ class TestConfig:
                 )
         self.test_act_indiv_weights = test_act_indiv_weights
         
-        max_len = max([len(i) for i in self.test_act_indiv_weights])
-        weight_test_res = []
-        msk_test_res = []
-        for i in self.test_act_indiv_weights:
-            weight_test_res.append(np.pad(i,(0,max_len-len(i))).tolist())
-            msk_test_res.append(
-                np.pad(i.astype(bool),(0,max_len-len(i))).tolist()
-                )
-        self.weight_test_res = torch.Tensor(weight_test_res)
-        self.msk_test_res = torch.Tensor(msk_test_res).float()
+        (
+            self.weight_test_res, 
+            self.msk_test_res
+            ) = self.__get_weight_mask_matrix(
+                self.test_act_indiv_weights
+            )
         
+        (
+            self.traj_is_weights_is, 
+            self.traj_is_weights_pd
+            ) = self.__get_traj_weights(
+                self.weight_test_res, self.msk_test_res
+                )
+        # Check for trivial weights i.e., all 0
+        assert not (self.traj_is_weights_is == 0).all().item(), "Weights are trivial"
+        assert not (self.traj_is_weights_pd == 0).all().item(), "Weights are trivial" 
+        
+        self.test_act_indiv_weights_alter = copy.deepcopy(
+            self.test_act_indiv_weights)
+        self.test_act_indiv_weights_alter[0] = np.zeros(
+            len(self.test_act_indiv_weights_alter[0])
+        )
+        
+        self.weight_test_res_alter,_ = self.__get_weight_mask_matrix(
+            self.test_act_indiv_weights_alter
+        )
+        
+        (self.traj_is_weights_is_alter, 
+         self.traj_is_weights_pd_alter) = self.__get_traj_weights(
+            self.weight_test_res_alter, self.msk_test_res
+        )
+         
+        max_len = max([len(i) for i in test_act_indiv_weights])
         reward_test_res = []
         for i in self.test_reward_values:
             reward_test_res.append(
@@ -85,43 +145,21 @@ test_dm_sa_values = [
     [[-3],[-2], [-0.8]]
 ]
 
-# test_act_indiv_weights = [
-#     np.array([1/0.9, 0.07/0.7, 0.89/0.66, 1/0.7]),
-#     np.array([ 0.75/0.54, 0.9/0.9, 0.2/0.5])
-#     ]
+test_configs:Dict[str,TestConfig] = {}
 
-
-# weight_test_res = torch.Tensor(
-#     [
-#         test_act_indiv_weights[0].tolist(),
-#         [*test_act_indiv_weights[1].tolist(),0]
-#         ]
-# )
-
-# msk_test_res = torch.Tensor(
-#     [
-#         [1]*4,
-#         [*[1]*3,0]
-#     ]
-# )
-
-# reward_test_res = torch.Tensor(
-#     [
-#         test_reward_values[0],
-#         [*test_reward_values[1],[0]]
-#         ]
-# ).squeeze()
-
-
-bin_discrete_action_test = TestConfig(
-    test_state_vals=test_state_vals,
-    test_action_vals=test_action_vals,
-    test_action_probs=test_action_probs,
-    test_eval_action_vals=test_eval_action_vals,
-    test_eval_action_probs=test_eval_action_probs,
-    test_reward_values=test_reward_values,
-    test_dm_s_values=test_dm_s_values,
-    test_dm_sa_values=test_dm_sa_values
+test_configs.update(
+    {
+        "binary_action": TestConfig(
+            test_state_vals=test_state_vals,
+            test_action_vals=test_action_vals,
+            test_action_probs=test_action_probs,
+            test_eval_action_vals=test_eval_action_vals,
+            test_eval_action_probs=test_eval_action_probs,
+            test_reward_values=test_reward_values,
+            test_dm_s_values=test_dm_s_values,
+            test_dm_sa_values=test_dm_sa_values
+            )
+        }
 )
 
 test_action_vals = [
@@ -134,17 +172,21 @@ test_eval_action_vals = [
     [[0], [0], [1]]
 ]
 
-single_discrete_action_test = TestConfig(
-    test_state_vals=test_state_vals,
-    test_action_vals=test_action_vals,
-    test_action_probs=test_action_probs,
-    test_eval_action_vals=test_eval_action_vals,
-    test_eval_action_probs=test_eval_action_probs,
-    test_reward_values=test_reward_values,
-    test_dm_s_values=test_dm_s_values,
-    test_dm_sa_values=test_dm_sa_values
-)
 
+test_configs.update(
+    {
+        "categorical_action": TestConfig(
+            test_state_vals=test_state_vals,
+            test_action_vals=test_action_vals,
+            test_action_probs=test_action_probs,
+            test_eval_action_vals=test_eval_action_vals,
+            test_eval_action_probs=test_eval_action_probs,
+            test_reward_values=test_reward_values,
+            test_dm_s_values=test_dm_s_values,
+            test_dm_sa_values=test_dm_sa_values
+            )
+        }
+)
 
 test_action_vals = [
     [[1,1], [0,1], [0,1], [1,0]],
@@ -156,16 +198,25 @@ test_eval_action_vals = [
     [[0,1], [0,0], [0,1]]
 ]
 
-duel_discrete_action_test = TestConfig(
-    test_state_vals=test_state_vals,
-    test_action_vals=test_action_vals,
-    test_action_probs=test_action_probs,
-    test_eval_action_vals=test_eval_action_vals,
-    test_eval_action_probs=test_eval_action_probs,
-    test_reward_values=test_reward_values,
-    test_dm_s_values=test_dm_s_values,
-    test_dm_sa_values=test_dm_sa_values
+test_configs.update(
+    {
+        "multi_binary_action": TestConfig(
+            test_state_vals=test_state_vals,
+            test_action_vals=test_action_vals,
+            test_action_probs=test_action_probs,
+            test_eval_action_vals=test_eval_action_vals,
+            test_eval_action_probs=test_eval_action_probs,
+            test_reward_values=test_reward_values,
+            test_dm_s_values=test_dm_s_values,
+            test_dm_sa_values=test_dm_sa_values
+            )
+        }
 )
+
+test_configs_fmt = [[key,test_configs[key]] for key in test_configs.keys()]
+test_configs_fmt_class = [
+    {"test_conf":test_configs[key]} for key in test_configs.keys()
+    ]
 
 def flatten_lst(input_lst:List[Any], recursive:bool=True)->List[Any]:
     """Function for flattening a list containing lists
@@ -188,3 +239,5 @@ def flatten_lst(input_lst:List[Any], recursive:bool=True)->List[Any]:
         else:
             output_lst.append(sub_lst)
     return output_lst
+
+tmp = test_configs["binary_action"]
