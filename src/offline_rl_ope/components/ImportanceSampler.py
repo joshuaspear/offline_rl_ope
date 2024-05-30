@@ -137,7 +137,23 @@ class ISWeightCalculator:
             states=states, actions=actions, eval_policy=eval_policy)
         check_array_dim(_is_weights,2)
         check_array_dim(_weight_msk,2)
-        assert len(eval_policy.policy_actions) == len(actions)
+        len_act = len(actions)
+        len_eval_act = len(eval_policy.policy_actions)
+        _msg = f"""
+        Actions have length: {len_act}. 
+        Evalutaion policy predicted actions have length: {len_eval_act}
+        """
+        try:
+            assert len_act == len_eval_act, _msg
+        except Exception as e:
+            if len_eval_act == 0:
+                logger.info(
+                    """
+                    No actions assoicated with evaluation policy.
+                    Has collect_act been set to true in the Policy class?
+                    """
+                    )
+            raise e
         self.policy_actions = eval_policy.policy_actions
         self.is_weights = _is_weights
         self.weight_msk = _weight_msk

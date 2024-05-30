@@ -72,7 +72,7 @@ class Policy(metaclass=ABCMeta):
         self, 
         state:StateTensor, 
         action:ActionTensor
-        )->ActionTensor:
+        )->Float[torch.Tensor, "traj_length 1"]:
         """Defines the probability of the given actions under the given states
         according to the policy defined by policy_func
 
