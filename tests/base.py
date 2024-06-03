@@ -213,6 +213,60 @@ test_configs.update(
         }
 )
 
+
+test_action_vals = [
+    [[0.9], [4], [0.001], [0]],
+    [[1], [0], [0.9]]
+]
+
+test_eval_action_vals = [
+    [[0.9], [0.9], [0.001], [0]],
+    [[1], [1], [0.9]]
+]
+
+
+test_configs.update(
+    {
+        "continuous_action": TestConfig(
+            test_state_vals=test_state_vals,
+            test_action_vals=test_action_vals,
+            test_action_probs=test_action_probs,
+            test_eval_action_vals=test_eval_action_vals,
+            test_eval_action_probs=test_eval_action_probs,
+            test_reward_values=test_reward_values,
+            test_dm_s_values=test_dm_s_values,
+            test_dm_sa_values=test_dm_sa_values
+            )
+        }
+)
+
+
+test_action_vals = [
+    [[0.9,1], [4,0.9], [0.001, 1], [0,-1.2]],
+    [[1,-0.8], [0,-1], [0.9,1]]
+]
+
+test_eval_action_vals = [
+    [[0.9,1], [1,0.9], [0.001, 1], [0,-1.2]],
+    [[1,-0.8], [0,-1], [1,1]]
+]
+
+test_configs.update(
+    {
+        "multi_continuous_action": TestConfig(
+            test_state_vals=test_state_vals,
+            test_action_vals=test_action_vals,
+            test_action_probs=test_action_probs,
+            test_eval_action_vals=test_eval_action_vals,
+            test_eval_action_probs=test_eval_action_probs,
+            test_reward_values=test_reward_values,
+            test_dm_s_values=test_dm_s_values,
+            test_dm_sa_values=test_dm_sa_values
+            )
+        }
+)
+
+
 test_configs_fmt = [[key,test_configs[key]] for key in test_configs.keys()]
 test_configs_fmt_class = [
     {"test_conf":test_configs[key]} for key in test_configs.keys()

@@ -1,13 +1,9 @@
-# offline_rl_ope (BETA RELEASE)
+# offline_rl_ope
 
 **WARNING**
 - All IS methods implemented incorrectly in versions < 6.x
-- Per-decision weighted importance sampling was incorrectly implemented in versions < 5.X
-- Weighted importance sampling was incorrectly implemented in versions 1.X.X and 2.1.X, 2.2.X
 - Unit testing currently only running in Python 3.11. 3.10 will be supported in the future
-- Only 1 dimensional discrete action spaces are currently supported!
-
-**IMPORTANT: THIS IS A BETA RELEASE. FUNCTIONALITY IS STILL BEING TESTED** Feedback/contributions are welcome :) 
+- Not all functionality has been tested i.e., d3rlpy api and LowerBounds are still in beta
 
 ### Testing progress
 - [x] components/
@@ -21,11 +17,12 @@
 - [x] Metrics
   - [x] EffectiveSampleSize.py
   - [x] ValidWeightsProp.py
-- [ ] PropensityModels
+- [x] PropensityModels
 - [ ] LowerBounds
 - [ ] api/d3rlpy
 
-* Insufficient functionality to test i.e., currently only wrapper classes are implemented for the OPEEstimation/DirectMethod.py
+Insufficient functionality to test DirectMethod.py i.e., currently only wrapper classes are implemented for the OPEEstimation/DirectMethod.py
+
 
 #### Overview
 Basic unit testing has been implemented for all the core functionality of the package. The d3rlpy/api for importance sampling adds minimal additional functionality therefore, it is likely to function as expected however, no sepcific unit testing has been implemented! 
@@ -34,7 +31,7 @@ Basic unit testing has been implemented for all the core functionality of the pa
 * More documentation needs to be added however, please refer to examples/ for an illustration of the functionality
   * examples/static.py provides an illustration of the package being used for evaluation post training. Whilst the d3rlpy package is used for model training, the script is agnostic to the evaluation model used
   * examples/d3rlpy_training_api.py provides an illustration of how the package can be used to obtain incremental performance statistics during the training of d3rlpy models. It provides greater functionality to the native scorer metrics included in d3rlpy
-* The current focus has been on discrete action spaces. Continuous action spaces are intended to be addressed at a later date
+* For continuous action spaces, only deterministic policies are fully supported. Supprt for stochastic policies is in development
 
 ### Description
 * offline_rl_ope aims to provide flexible and efficient implementations of OPE algorithms for use when training offline RL models. The main audience is researchers developing smaller, non-distributed models i.e., those who do not want to use packages such as ray (https://github.com/ray-project/ray).

@@ -1,9 +1,0 @@
-,raw_vals,metric_name
-epoch_1,0.5026572188648346,epoch_train_loss
-epoch_2,0.45641687404069453,epoch_train_loss
-epoch_3,0.4506564313404394,epoch_train_loss
-epoch_4,0.4499283042737856,epoch_train_loss
-epoch_1,0.4542446283801114,epoch_val_loss
-epoch_2,0.43553749836608163,epoch_val_loss
-epoch_3,0.4922322245233471,epoch_val_loss
-epoch_4,0.4404787527628977,epoch_val_loss
