@@ -41,7 +41,6 @@ Basic unit testing has been implemented for all the core functionality of the pa
 * Users require smaller workloads
 * Users should be able to easily implement new OPE methods using the importance sampling classes provided
 * When developing models, users may want to run several different OPE methods e.g., per-decision IS, per-decision weight IS etc. These different methods fundamentally utilise the same set of IS weights. The library has been developed to efficiently cache these IS weights, significantly reducing the overhead of incremental OPE metrics whilst adding no overhead if only a single OPE method is required.
-* Users only require evaluation of discrete action spaces
 
 #### OPE methods
 * Importance sampling:
