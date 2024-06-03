@@ -11,6 +11,7 @@ from sklearn.multioutput import MultiOutputClassifier
 from sklearn.multiclass import OneVsRestClassifier
 from xgboost import XGBClassifier
 import pandas as pd
+import shutil
 
 # Import callbacks
 from offline_rl_ope.api.d3rlpy.Callbacks import (
@@ -23,9 +24,9 @@ from offline_rl_ope.api.d3rlpy.Callbacks import (
 from offline_rl_ope.api.d3rlpy.Scorers import (
     ISEstimatorScorer, ISDiscreteActionDistScorer, QueryScorer
     )
-from offline_rl_ope.components.Policy import BehavPolicy
+from offline_rl_ope.components.Policy import NumpyPolicyFuncWrapper, Policy
 from offline_rl_ope.PropensityModels.sklearn import (
-    MultiOutputMultiClassTrainer, SklearnTorchTrainerWrapper)
+    SklearnDiscrete)
 
 if __name__=="__main__":
 
@@ -60,18 +61,14 @@ if __name__=="__main__":
 
     behav_est.fit(X=observations, Y=actions.reshape(-1,1))
 
-    sklearn_trainer = MultiOutputMultiClassTrainer(
+    sklearn_trainer = SklearnDiscrete(
         theoretical_action_classes=[np.array([0,1])],
         estimator=behav_est
         )
     sklearn_trainer.fitted_cls = [pd.Series(actions).unique()]
-    gbt_est = SklearnTorchTrainerWrapper(
-        sklearn_trainer=sklearn_trainer
-    )
 
-    #gbt_est = GbtEst(estimator=behav_est)
-    gbt_policy_be = BehavPolicy(
-        policy_func=gbt_est, 
+    gbt_policy_be = Policy(
+        policy_func=NumpyPolicyFuncWrapper(sklearn_trainer.predict_proba), 
         collect_res=False
         )
 
@@ -80,6 +77,7 @@ if __name__=="__main__":
         is_types=["vanilla", "per_decision"], 
         behav_policy=gbt_policy_be, 
         dataset=dataset,
+        action_dim=1,
         eval_policy_kwargs={
             "gpu": False, 
             "collect_act": True   
@@ -162,5 +160,5 @@ if __name__=="__main__":
 
     # evaluate trained algorithm
     evaluate_qlearning_with_environment(algo=dqn, env=env)
-    # shutil.rmtree("d3rlpy_data")
-    # shutil.rmtree("d3rlpy_logs")
+    shutil.rmtree("d3rlpy_data")
+    shutil.rmtree("d3rlpy_logs")

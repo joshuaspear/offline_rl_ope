@@ -3,9 +3,10 @@ import torch
 from typing import Callable, List
 from jaxtyping import jaxtyped, Float
 from typeguard import typechecked as typechecker
+import numpy as np
 
 from ..RuntimeChecks import check_array_dim
-from ..types import (StateTensor,ActionTensor)
+from ..types import (StateTensor,ActionTensor,StateArray,ActionArray)
 
 
 def postproc_pass(x:torch.Tensor)->torch.Tensor:
@@ -19,10 +20,43 @@ def preproc_cuda(x:torch.Tensor)->torch.Tensor:
 
 
 __all__ = [
-    "Policy", "GreedyDeterministic", "BehavPolicy"
+    "Policy", "GreedyDeterministic", "BasePolicy", "NumpyPolicyFuncWrapper",
+    "NumpyGreedyPolicyFuncWrapper"
     ]
 
-class Policy(metaclass=ABCMeta):
+
+class NumpyPolicyFuncWrapper:
+    
+    def __init__(self, policy_func:Callable[..., torch.Tensor]) -> None:
+        self.policy_func = policy_func
+    
+    def __call__(
+        self,
+        state:StateTensor, 
+        action:ActionTensor
+        )->Float[torch.Tensor, "traj_length 1"]:
+        res = self.policy_func(
+            state.cpu().detach().numpy(),
+            action.cpu().detach().numpy(),
+            )
+        return torch.Tensor(res)
+    
+class NumpyGreedyPolicyFuncWrapper:
+    
+    def __init__(self, policy_func:Callable[..., torch.Tensor]) -> None:
+        self.policy_func = policy_func
+    
+    def __call__(
+        self,
+        state:StateTensor 
+        )->ActionTensor:
+        res = self.policy_func(
+            state.cpu().detach().numpy()
+            )
+        return torch.Tensor(res)
+
+
+class BasePolicy(metaclass=ABCMeta):
     
     def __init__(
         self, 
@@ -90,11 +124,14 @@ class Policy(metaclass=ABCMeta):
         """
         pass
 
-class BehavPolicy(Policy):
+class Policy(BasePolicy):
     
     def __init__(
         self, 
-        policy_func:Callable[[torch.Tensor,torch.Tensor], torch.Tensor], 
+        policy_func:Callable[
+            [StateTensor,ActionTensor], 
+            Float[torch.Tensor, "traj_length 1"]
+            ], 
         collect_res:bool=False, 
         collect_act:bool=False, 
         gpu:bool=False
@@ -111,12 +148,13 @@ class BehavPolicy(Policy):
         # assert isinstance(state,torch.Tensor)
         # assert isinstance(action,torch.Tensor)
         # check_array_dim(action,2)
-        res = self.policy_func(y=action, x=state)
+        state = self.preproc_tens(state)
+        res = self.policy_func(state, action)
+        res = self.postproc_tens(res)
         self.collect_res_fn(res)
         return res
-        
 
-class GreedyDeterministic(Policy):
+class GreedyDeterministic(BasePolicy):
     
     def __init__(
         self, 
@@ -140,7 +178,7 @@ class GreedyDeterministic(Policy):
         # assert isinstance(action,torch.Tensor)
         # check_array_dim(action,2)
         state = self.preproc_tens(state)
-        greedy_action = self.policy_func(x=state)
+        greedy_action = self.policy_func(state)
         check_array_dim(greedy_action,2)
         assert action.shape == greedy_action.shape
         greedy_action = self.postproc_tens(greedy_action)

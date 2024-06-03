@@ -95,6 +95,8 @@ The different kinds of importance samples can also be visualised by querying the
 * Updated PropensityModels structure for sklearn and added a helper class for compatability with torch
 * Full runtime typechecking with jaxtyping
 * Fixed bug with IS methods where the average was being taken twice
+* Significantly simplified API, especially integrating Policy classes with propensity models
+* Generalised d3rlpy API to allow for wrapping continuous policies with D3RlPyTorchAlgoPredict
 
 #### 5.0.1
 * Fixed bug where GreedyDeterministic couldn't handle multi-dimensional action spaces

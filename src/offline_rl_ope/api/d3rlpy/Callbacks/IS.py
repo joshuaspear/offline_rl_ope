@@ -6,7 +6,7 @@ from typing import Any, Dict, List
 from d3rlpy.interface import QLearningAlgoProtocol
 from d3rlpy.dataset import ReplayBuffer
 
-from ....components.Policy import Policy, GreedyDeterministic
+from ....components.Policy import BasePolicy, GreedyDeterministic
 from ....components.ImportanceSampler import ISWeightOrchestrator
 from .base import OPECallbackBase
 from ..Misc import D3RlPyTorchAlgoPredict
@@ -23,8 +23,9 @@ class ISCallback(ISWeightOrchestrator, OPECallbackBase):
     def __init__(
         self, 
         is_types:List[str], 
-        behav_policy: Policy, 
-        dataset: ReplayBuffer, 
+        behav_policy: BasePolicy, 
+        dataset: ReplayBuffer,
+        action_dim:int, 
         eval_policy_kwargs:Dict[str,Any] = {},
         debug:bool=False,
         debug_path:str="", 
@@ -35,6 +36,7 @@ class ISCallback(ISWeightOrchestrator, OPECallbackBase):
         self.states:List[torch.Tensor] = []
         self.actions:List[torch.Tensor] = []
         self.rewards:List[torch.Tensor] = []
+        self.action_dim = action_dim
         for traj in dataset.episodes:
             self.states.append(torch.Tensor(traj.observations))
             self.actions.append(torch.Tensor(traj.actions))
@@ -62,7 +64,9 @@ class ISCallback(ISWeightOrchestrator, OPECallbackBase):
         total_step:int
         ) -> None:
         policy_func = D3RlPyTorchAlgoPredict(
-            predict_func=algo.predict)
+            predict_func=algo.predict,
+            action_dim=self.action_dim
+            )
         eval_policy = GreedyDeterministic(
             policy_func=policy_func, 
             **self.eval_policy_kwargs

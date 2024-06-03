@@ -3,7 +3,7 @@ from unittest.mock import MagicMock
 import torch
 import numpy as np
 import copy
-from offline_rl_ope.components.Policy import Policy
+from offline_rl_ope.components.Policy import BasePolicy
 from offline_rl_ope.components.ImportanceSampler import (
     VanillaIS, PerDecisionIS, ISWeightCalculator
     )
@@ -66,7 +66,7 @@ class ISWeightCalculatorTest(unittest.TestCase):
 
         be_policy_mock = TestPolicy(self.test_conf.test_action_probs)
         behav_policy = MagicMock(
-            spec=Policy,
+            spec=BasePolicy,
             side_effect=be_policy_mock
             )
         #behav_policy.__call__ = MagicMock(side_effect=)
@@ -92,7 +92,7 @@ class ISWeightCalculatorTest(unittest.TestCase):
         #eval_policy = TestPolicy(self.test_conf.test_eval_action_probs)
         e_policy_mock = TestPolicy(self.test_conf.test_eval_action_probs)
         eval_policy = MagicMock(
-            spec=Policy,
+            spec=BasePolicy,
             side_effect=e_policy_mock
             )
         for s,a in zip(self.test_conf.test_state_vals, self.test_conf.test_action_vals):
@@ -115,7 +115,7 @@ class ISWeightCalculatorTest(unittest.TestCase):
         #eval_policy = TestPolicy(self.test_conf.test_eval_action_probs)
         e_policy_mock = TestPolicy(self.test_conf.test_eval_action_probs)
         eval_policy = MagicMock(
-            spec=Policy,
+            spec=BasePolicy,
             side_effect=e_policy_mock
             )
         is_weights, weight_msk = self.is_sampler.get_dataset_w(

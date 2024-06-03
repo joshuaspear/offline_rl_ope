@@ -12,12 +12,13 @@ from xgboost import XGBClassifier
 import torch
 
 from offline_rl_ope.Dataset import ISEpisode
-from offline_rl_ope.components.Policy import BehavPolicy, GreedyDeterministic
+from offline_rl_ope.components.Policy import (
+    GreedyDeterministic, Policy, NumpyPolicyFuncWrapper)
 from offline_rl_ope.components.ImportanceSampler import ISWeightOrchestrator
 from offline_rl_ope.OPEEstimators import (
     ISEstimator, DREstimator, D3rlpyQlearnDM)
 from offline_rl_ope.PropensityModels.sklearn import (
-    MultiOutputMultiClassTrainer, SklearnTorchTrainerWrapper)
+    SklearnDiscrete)
 from offline_rl_ope.LowerBounds.HCOPE import get_lower_bound
 
 from offline_rl_ope.api.d3rlpy.Misc import D3RlPyTorchAlgoPredict
@@ -54,16 +55,14 @@ if __name__ == "__main__":
 
     behav_est.fit(X=observations, Y=actions.reshape(-1,1))
 
-    sklearn_trainer = MultiOutputMultiClassTrainer(
+    sklearn_trainer = SklearnDiscrete(
         theoretical_action_classes=[np.array([0,1])],
         estimator=behav_est
         )
     sklearn_trainer.fitted_cls = [pd.Series(actions).unique()]
-    gbt_est = SklearnTorchTrainerWrapper(
-        sklearn_trainer=sklearn_trainer
-    )
-    gbt_policy_be = BehavPolicy(
-        policy_func=gbt_est, 
+    
+    gbt_policy_be = Policy(
+        policy_func=NumpyPolicyFuncWrapper(sklearn_trainer.predict_proba), 
         collect_res=False
         )
 
@@ -93,7 +92,10 @@ if __name__ == "__main__":
 
         
     # Static OPE evaluation 
-    policy_func = D3RlPyTorchAlgoPredict(predict_func=dqn.predict)
+    policy_func = D3RlPyTorchAlgoPredict(
+        predict_func=dqn.predict,
+        action_dim=1
+        )
     eval_policy = GreedyDeterministic(
         policy_func=policy_func, collect_res=False, 
         collect_act=True, gpu=False

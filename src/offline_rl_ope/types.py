@@ -43,3 +43,13 @@ class PropensityTorchBaseType(Protocol):
     
     def eval(self)->None:
         ...
+
+
+@runtime_checkable       
+class PropensitySklearnContinuousType(Protocol):
+    
+    def predict_proba(self, X:StateArray) -> ActionArray:
+        ...
+    
+    def predict(self, X:StateArray) -> ActionArray:
+        ...

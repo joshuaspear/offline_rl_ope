@@ -9,10 +9,10 @@ from ...types import StateArray, ActionArray
 from ..base import PropensityTrainer
 
 __all__ = [
-    "MultiOutputMultiClassTrainer"
+    "SklearnDiscrete"
 ]
 
-class MultiOutputMultiClassTrainer(PropensityTrainer):
+class SklearnDiscrete(PropensityTrainer):
     
     def __init__(
         self, 

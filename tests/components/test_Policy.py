@@ -3,7 +3,7 @@ from unittest.mock import MagicMock
 import torch
 import numpy as np
 from offline_rl_ope.components.Policy import (
-    GreedyDeterministic, BehavPolicy)
+    GreedyDeterministic, Policy)
 from offline_rl_ope import logger
 from parameterized import parameterized_class
 from ..base import test_configs_fmt_class, TestConfig
@@ -158,12 +158,12 @@ class MockPolicyClass:
         pass
 
 @parameterized_class(test_configs_fmt_class)
-class BehavPolicyTest(unittest.TestCase):
+class PolicyTest(unittest.TestCase):
     
     test_conf:TestConfig
     
     def setUp(self) -> None:
-        def __mock_return(y, x):
+        def __mock_return(x,y):
             lkp = {
                 "_".join(
                     [
@@ -183,7 +183,7 @@ class BehavPolicyTest(unittest.TestCase):
         #policy_func = MockPolicyClass()
         #policy_func.__call__ = MagicMock(side_effect=__mock_return)
         #self.policy = BehavPolicy(policy_func)
-        self.policy = BehavPolicy(
+        self.policy = Policy(
             policy_func=MagicMock(side_effect=__mock_return))
 
     

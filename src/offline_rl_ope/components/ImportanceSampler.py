@@ -7,14 +7,20 @@ from typeguard import typechecked as typechecker
 
 
 from ..RuntimeChecks import check_array_dim, check_array_shape
-from .Policy import Policy
+from .Policy import BasePolicy
 from .. import logger
 from ..types import (StateTensor,ActionTensor,WeightTensor)
 
 
+__all__ = [
+    "ISWeightCalculator", "ImportanceSampler", "VanillaIS", "PerDecisionIS",
+    "ISWeightOrchestrator"
+    ]
+
+
 class ISWeightCalculator:
-    def __init__(self, behav_policy:Policy) -> None:
-        assert isinstance(behav_policy,Policy)
+    def __init__(self, behav_policy:BasePolicy) -> None:
+        assert isinstance(behav_policy,BasePolicy)
         self.__behav_policy = behav_policy
         self.is_weights = torch.empty(0)
         self.weight_msk = torch.empty(0)
@@ -25,7 +31,7 @@ class ISWeightCalculator:
         self, 
         states:StateTensor, 
         actions:ActionTensor, 
-        eval_policy:Policy
+        eval_policy:BasePolicy
         )->Float[torch.Tensor, "traj_length"]:
         """Function to calculate the timestep IS weights over a trajectory i.e., 
         for each timestep (t) Tensor(\pi_{e}(a_{t}|s_{t})/\pi_{b}(a_{t}|s_{t}))
@@ -46,7 +52,7 @@ class ISWeightCalculator:
         # check_array_dim(actions,2)
         # assert isinstance(states, torch.Tensor)
         # assert isinstance(actions, torch.Tensor)
-        #assert isinstance(eval_policy, Policy)
+        #assert isinstance(eval_policy, BasePolicy)
         
         with torch.no_grad():
             behav_probs = self.__behav_policy(
@@ -70,7 +76,7 @@ class ISWeightCalculator:
         self, 
         states:List[torch.Tensor], 
         actions:List[torch.Tensor], 
-        eval_policy:Policy
+        eval_policy:BasePolicy
         )->Tuple[WeightTensor, WeightTensor]:
         """_summary_
 
@@ -81,7 +87,7 @@ class ISWeightCalculator:
                 (traj_length, number of actions). Note, this is likely 
                 (traj_length,1) if for example a discrete action space has been 
                 flattened from [0,1]^2 to [0,1,2,3]
-            eval_policy (Policy): Policy class defining the target policy to be 
+            eval_policy (BasePolicy): Policy class defining the target policy to be 
                 evaluated
 
         Returns:
@@ -94,7 +100,7 @@ class ISWeightCalculator:
                 ith trajectory was observed
         """
         assert len(states) == len(actions)
-        #assert isinstance(eval_policy, Policy)
+        #assert isinstance(eval_policy, BasePolicy)
         # weight_res = torch.zeros(size=(len(states),h))
         # weight_msk = torch.zeros(size=(len(states),h))
         weight_res_lst:List[torch.Tensor] = []
@@ -131,7 +137,7 @@ class ISWeightCalculator:
         self, 
         states:List[torch.Tensor], 
         actions:List[torch.Tensor], 
-        eval_policy:Policy
+        eval_policy:BasePolicy
         ):
         _is_weights, _weight_msk = self.get_dataset_w(
             states=states, actions=actions, eval_policy=eval_policy)
@@ -242,7 +248,7 @@ class ISWeightOrchestrator(ISWeightCalculator):
         "per_decision": PerDecisionIS
     }
     
-    def __init__(self, *args, behav_policy:Policy) -> None:
+    def __init__(self, *args, behav_policy:BasePolicy) -> None:
         super().__init__(behav_policy=behav_policy)
         self.is_samplers:Dict[str,ImportanceSampler] = {}
         for arg in args:
@@ -263,7 +269,7 @@ class ISWeightOrchestrator(ISWeightCalculator):
         self, 
         states:List[torch.Tensor], 
         actions:List[torch.Tensor], 
-        eval_policy:Policy
+        eval_policy:BasePolicy
         ):
         super().update(states=states, actions=actions, eval_policy=eval_policy)
         for sampler in self.is_samplers.keys():
