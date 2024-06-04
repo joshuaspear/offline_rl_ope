@@ -31,7 +31,6 @@ Basic unit testing has been implemented for all the core functionality of the pa
 * More documentation needs to be added however, please refer to examples/ for an illustration of the functionality
   * examples/static.py provides an illustration of the package being used for evaluation post training. Whilst the d3rlpy package is used for model training, the script is agnostic to the evaluation model used
   * examples/d3rlpy_training_api.py provides an illustration of how the package can be used to obtain incremental performance statistics during the training of d3rlpy models. It provides greater functionality to the native scorer metrics included in d3rlpy
-* For continuous action spaces, only deterministic policies are fully supported. Supprt for stochastic policies is in development
 
 ### Description
 * offline_rl_ope aims to provide flexible and efficient implementations of OPE algorithms for use when training offline RL models. The main audience is researchers developing smaller, non-distributed models i.e., those who do not want to use packages such as ray (https://github.com/ray-project/ray).
@@ -93,6 +92,9 @@ The different kinds of importance samples can also be visualised by querying the
 * Fixed bug with IS methods where the average was being taken twice
 * Significantly simplified API, especially integrating Policy classes with propensity models
 * Generalised d3rlpy API to allow for wrapping continuous policies with D3RlPyTorchAlgoPredict
+* Added explicit stochastic policies for d3rlpy
+* Introduced 'policy_func' which is any function/method which outputs type Union[TorchPolicyReturn, NumpyPolicyReturn]
+* Simplified and unified ISCallback in d3rlpy/api using PolicyFactory
 
 #### 5.0.1
 * Fixed bug where GreedyDeterministic couldn't handle multi-dimensional action spaces

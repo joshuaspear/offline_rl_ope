@@ -149,17 +149,9 @@ class ISWeightCalculator:
         Actions have length: {len_act}. 
         Evalutaion policy predicted actions have length: {len_eval_act}
         """
-        try:
-            assert len_act == len_eval_act, _msg
-        except Exception as e:
-            if len_eval_act == 0:
-                logger.info(
-                    """
-                    No actions assoicated with evaluation policy.
-                    Has collect_act been set to true in the Policy class?
-                    """
-                    )
-            raise e
+        _equal_len_tst = len_act == len_eval_act
+        _none_test = len_eval_act == 0
+        assert _equal_len_tst or _none_test, _msg
         self.policy_actions = eval_policy.policy_actions
         self.is_weights = _is_weights
         self.weight_msk = _weight_msk

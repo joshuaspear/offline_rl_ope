@@ -1,40 +1,56 @@
-from d3rlpy.algos import DQNConfig
-import pandas as pd
-from d3rlpy.datasets import get_cartpole
-import numpy as np
-from sklearn.multioutput import MultiOutputClassifier
-from sklearn.multiclass import OneVsRestClassifier
-from d3rlpy.ope import DiscreteFQE, FQEConfig
+from d3rlpy.algos import SACConfig
+from d3rlpy.datasets import get_pendulum
+from typing import Dict
+from d3rlpy.ope import FQEConfig, FQE
 from d3rlpy.metrics import (SoftOPCEvaluator, 
                             InitialStateValueEstimationEvaluator)
 from d3rlpy.dataset import BasicTransitionPicker, ReplayBuffer, InfiniteBuffer
-from xgboost import XGBClassifier
+import numpy as np
 import torch
+from torch.distributions import Normal
+
+from pymlrf.SupervisedLearning.torch import (
+    PercEpsImprove)
+from pymlrf.FileSystem import DirectoryHandler
 
 from offline_rl_ope.Dataset import ISEpisode
-from offline_rl_ope.components.Policy import (
-    GreedyDeterministic, Policy, NumpyPolicyFuncWrapper)
+from offline_rl_ope.components.Policy import Policy, GreedyDeterministic
 from offline_rl_ope.components.ImportanceSampler import ISWeightOrchestrator
 from offline_rl_ope.OPEEstimators import (
     ISEstimator, DREstimator, D3rlpyQlearnDM)
-from offline_rl_ope.PropensityModels.sklearn import (
-    SklearnDiscrete)
+from offline_rl_ope.PropensityModels.torch import FullGuassian, TorchRegTrainer 
 from offline_rl_ope.LowerBounds.HCOPE import get_lower_bound
 
-from offline_rl_ope.api.d3rlpy.Misc import D3RlPyDeterministicDiscreteWrapper
+from offline_rl_ope.api.d3rlpy.Misc import D3RlPyDeterministicWrapper
+from offline_rl_ope.types import PropensityTorchOutputType
+
+from PropensityTrainingLoop import torch_training_loop
+
+class GaussianLossWrapper:
+    
+    def __init__(self) -> None:
+        self.scorer = torch.nn.GaussianNLLLoss()
+    
+    def __call__(
+        self, 
+        y_pred:PropensityTorchOutputType, 
+        y_true:Dict[str,torch.Tensor]
+        ) -> torch.Tensor:
+        res = self.scorer(
+            input=y_pred["loc"], 
+            var=y_pred["scale"], 
+            target=y_true["y"]
+            )
+        return res
 
 if __name__ == "__main__":
     # obtain dataset
-    dataset, env = get_cartpole()
+    dataset, env = get_pendulum()
 
     # setup algorithm
     gamma = 0.99
-    dqn = DQNConfig(gamma=gamma, target_update_interval=100).create()
-
-    unique_pol_acts = np.arange(0,env.action_space.n)
-
-    behav_est = MultiOutputClassifier(OneVsRestClassifier(XGBClassifier(
-        objective="binary:logistic")))
+    sac = SACConfig(gamma=gamma).create()
+    
     dataset = ReplayBuffer(
         buffer=InfiniteBuffer(), 
         episodes=dataset.episodes[0:100]
@@ -53,16 +69,51 @@ if __name__ == "__main__":
     observations = np.concatenate(observations)
     actions = np.concatenate(actions)
 
-    behav_est.fit(X=observations, Y=actions.reshape(-1,1))
-
-    sklearn_trainer = SklearnDiscrete(
-        theoretical_action_classes=[np.array([0,1])],
-        estimator=behav_est
+    assert len(env.observation_space.shape) == 1
+    estimator = FullGuassian(
+            input_dim=env.observation_space.shape[0], 
+            #layers_dim=[64,64],
+            layers_dim=[64,64],
+            m_out_dim=1, 
+            sd_out_dim=1
+            )
+    estimator = TorchRegTrainer(
+        estimator=estimator, 
+        dist_func=Normal, 
+        gpu=False
         )
-    sklearn_trainer.fitted_cls = [pd.Series(actions).unique()]
+    early_stop_criteria = PercEpsImprove(eps=0, direction="gr")
+    meta_data = {
+        "train_loss_criteria": "gauss_nll",
+        "val_loss_criteria": "gauss_nll"
+        }
+    criterion = GaussianLossWrapper()
     
-    gbt_policy_be = Policy(
-        policy_func=NumpyPolicyFuncWrapper(sklearn_trainer.policy_func), 
+    prop_output_dh = DirectoryHandler(loc="./propensity_output")
+    if not prop_output_dh.is_created:
+        prop_output_dh.create()
+    else:
+        prop_output_dh.clear()
+    
+    torch_training_loop.train(
+        model=estimator.estimator,
+        x_train=observations,
+        y_train=actions.reshape(-1,1),
+        x_val=observations,
+        y_val=actions.reshape(-1,1),
+        batch_size=32,
+        shuffle=True,
+        lr=0.01,
+        gpu=False,
+        criterion=criterion,
+        epochs=4,
+        seed=1,
+        save_dir=prop_output_dh.loc,
+        early_stopping_func=early_stop_criteria
+    )
+    
+    policy_be = Policy(
+        policy_func=estimator.policy_func, 
         collect_res=False
         )
 
@@ -70,8 +121,10 @@ if __name__ == "__main__":
     n_epochs=1
     n_steps_per_epoch = no_obs_steps
     n_steps = no_obs_steps*n_epochs
-    dqn.fit(dataset, n_steps=n_steps, n_steps_per_epoch=n_steps_per_epoch, 
-            with_timestamp=False)
+    sac.fit(
+        dataset, n_steps=n_steps, n_steps_per_epoch=n_steps_per_epoch, 
+        with_timestamp=False
+        )
 
     fqe_scorers = {
         "soft_opc": SoftOPCEvaluator(
@@ -86,14 +139,14 @@ if __name__ == "__main__":
 
     fqe_config = FQEConfig(learning_rate=1e-4)
     #discrete_fqe = DiscreteFQE(algo=dqn, **fqe_init_kwargs)
-    discrete_fqe = DiscreteFQE(algo=dqn, config=fqe_config, device=False)
+    fqe = FQE(algo=sac, config=fqe_config, device=False)
 
-    discrete_fqe.fit(dataset, evaluators=fqe_scorers, n_steps=no_obs_steps)            
+    fqe.fit(dataset, evaluators=fqe_scorers, n_steps=no_obs_steps)            
 
         
     # Static OPE evaluation 
-    policy_func = D3RlPyDeterministicDiscreteWrapper(
-        predict_func=dqn.predict,
+    policy_func = D3RlPyDeterministicWrapper(
+        predict_func=sac.predict,
         action_dim=1
         )
     eval_policy = GreedyDeterministic(
@@ -110,13 +163,13 @@ if __name__ == "__main__":
                         )
         
     is_weight_calculator = ISWeightOrchestrator("vanilla", "per_decision", 
-                                                behav_policy=gbt_policy_be)
+                                                behav_policy=policy_be)
     is_weight_calculator.update(
         states=[ep.state for ep in episodes], 
         actions=[ep.action for ep in episodes],
         eval_policy=eval_policy)
 
-    fqe_dm_model = D3rlpyQlearnDM(model=discrete_fqe)
+    fqe_dm_model = D3rlpyQlearnDM(model=fqe)
 
     is_estimator = ISEstimator(norm_weights=False, cache_traj_rewards=True)
     wis_estimator = ISEstimator(norm_weights=True)

@@ -2,9 +2,16 @@ from abc import abstractmethod
 import torch
 import numpy as np
 import pickle
+from jaxtyping import jaxtyped, Float
+from typeguard import typechecked as typechecker
 
 from ..base import PropensityTrainer
-from ...types import PropensityTorchBaseType
+from ...types import (
+    PropensityTorchBaseType, 
+    TorchPolicyReturn,
+    StateTensor, 
+    ActionTensor
+    )
 from ...RuntimeChecks import check_array_dim
 
 __all__ = [
@@ -61,21 +68,35 @@ class TorchPropensityTrainer(PropensityTrainer):
     @abstractmethod
     def predict(
         self, 
-        x:torch.Tensor, 
+        x:StateTensor, 
         *args, 
         **kwargs
-        ) -> torch.Tensor:
+        ) -> ActionTensor:
         pass
     
     @abstractmethod
     def predict_proba(
         self, 
-        x: torch.Tensor, 
-        y: torch.Tensor, 
+        x: StateTensor, 
+        y: ActionTensor, 
         *args, 
         **kwargs
-        ) -> torch.Tensor:
+        ) -> Float[torch.Tensor, "traj_length 1"]:
         pass
+    
+    @jaxtyped(typechecker=typechecker)
+    def policy_func(
+        self, 
+        x: StateTensor, 
+        y: ActionTensor, 
+        *args, 
+        **kwargs
+        ) -> TorchPolicyReturn:
+        res = self.predict_proba(x=x,y=y)
+        return TorchPolicyReturn(
+            actions=y,
+            action_prs=res
+            )
     
         
                
@@ -89,12 +110,13 @@ class TorchClassTrainer(TorchPropensityTrainer):
         assert isinstance(gpu,bool)
         super().__init__(estimator=estimator, gpu=gpu)
 
+    @jaxtyped(typechecker=typechecker)
     def predict(
         self, 
-        x:torch.Tensor, 
+        x:StateTensor, 
         *args, 
         **kwargs
-        ) -> torch.Tensor:
+        ) -> ActionTensor:
         """Outputs the y values with highest likelihood given x.
         propense_res["out"] is expected to be of dimension: 
             (batch_size, n action values, n actions)
@@ -111,16 +133,17 @@ class TorchClassTrainer(TorchPropensityTrainer):
         propense_res = self.estimator(x)
         check_array_dim(propense_res["out"],3)
         # Take max over values
-        res = torch.argmax(propense_res["out"], dim=1, keepdim=False)
+        res = torch.argmax(propense_res["out"], dim=1, keepdim=False).float()
         return res
     
+    @jaxtyped(typechecker=typechecker)
     def predict_proba(
         self, 
-        x: torch.Tensor, 
-        y: torch.Tensor, 
+        x: StateTensor, 
+        y: ActionTensor, 
         *args, 
         **kwargs
-        ) -> torch.Tensor:
+        ) -> Float[torch.Tensor, "traj_length 1"]:
         """Outputs the normalised likelihood of each dimension of
         y given input x for classification.
         res["out"] is expected to be of dimension: 
@@ -161,25 +184,27 @@ class TorchRegTrainer(TorchPropensityTrainer):
         assert isinstance(gpu,bool)
         super().__init__(estimator=estimator, gpu=gpu)
         self.dist_func = dist_func
-              
+    
+    @jaxtyped(typechecker=typechecker)
     def predict(
         self, 
-        x:torch.Tensor, 
+        x:StateTensor, 
         *args, 
         **kwargs
-        ) -> torch.Tensor:
+        ) -> ActionTensor:
         x = self.input_setup(x)
         self.estimator.eval()
         propense_res = self.estimator(x)
         return propense_res["loc"]
     
+    @jaxtyped(typechecker=typechecker)
     def predict_proba(
         self, 
-        x: torch.Tensor, 
-        y: torch.Tensor, 
+        x: StateTensor, 
+        y: ActionTensor, 
         *args, 
         **kwargs
-        ) -> torch.Tensor:
+        ) -> Float[torch.Tensor, "traj_length 1"]:
         assert isinstance(x,torch.Tensor)
         assert isinstance(y,torch.Tensor)
         x = self.input_setup(x)

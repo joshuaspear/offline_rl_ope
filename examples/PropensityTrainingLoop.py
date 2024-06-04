@@ -1,6 +1,5 @@
 from abc import abstractmethod
 from typing import Any, Callable, Dict, Tuple, List
-from offline_rl_ope.PropensityModels import (PropensityTorchBase)
 from pymlrf.SupervisedLearning.torch import (
     train, validate_single_epoch
     )
@@ -12,7 +11,28 @@ import torch
 from torch.optim import Adam
 import os
 
+from offline_rl_ope.PropensityModels import PropensityTorchBase
+from offline_rl_ope.types import PropensityTorchOutputType
 from offline_rl_ope import logger
+
+
+class GaussianLossWrapper:
+    
+    def __init__(self) -> None:
+        self.scorer = torch.nn.GaussianNLLLoss()
+    
+    def __call__(
+        self, 
+        y_pred:PropensityTorchOutputType, 
+        y_true:Dict[str,torch.Tensor]
+        ) -> torch.Tensor:
+        res = self.scorer(
+            input=y_pred["loc"], 
+            var=y_pred["scale"], 
+            target=y_true["y"]
+            )
+        return res
+
 
 
 class PropensityTrainingLoop:

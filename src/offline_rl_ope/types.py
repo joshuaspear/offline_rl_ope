@@ -1,6 +1,6 @@
+from dataclasses import dataclass
 import torch
-from typing import Any, Dict, Union, Protocol, runtime_checkable
-import numpy.typing as npt
+from typing import Dict, Union, Protocol, runtime_checkable
 import numpy as np
 import pandas as pd
 from jaxtyping import Float
@@ -53,3 +53,20 @@ class PropensitySklearnContinuousType(Protocol):
     
     def predict(self, X:StateArray) -> ActionArray:
         ...
+
+@dataclass
+class TorchPolicyReturn:
+    actions: Union[ActionTensor, None]
+    action_prs: Union[Float[torch.Tensor, "traj_length 1"], None]
+    
+
+@dataclass
+class NumpyPolicyReturn:
+    actions: Union[ActionTensor, None]
+    action_prs: Union[Float[torch.Tensor, "traj_length 1"], None]
+
+    def get_torch_policy_return(self) -> TorchPolicyReturn:
+        return TorchPolicyReturn(
+            actions=torch.tensor(self.actions),
+            action_prs=torch.tensor(self.action_prs)
+        )

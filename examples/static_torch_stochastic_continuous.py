@@ -14,34 +14,16 @@ from pymlrf.SupervisedLearning.torch import (
 from pymlrf.FileSystem import DirectoryHandler
 
 from offline_rl_ope.Dataset import ISEpisode
-from offline_rl_ope.components.Policy import Policy, GreedyDeterministic
+from offline_rl_ope.components.Policy import Policy
 from offline_rl_ope.components.ImportanceSampler import ISWeightOrchestrator
 from offline_rl_ope.OPEEstimators import (
     ISEstimator, DREstimator, D3rlpyQlearnDM)
 from offline_rl_ope.PropensityModels.torch import FullGuassian, TorchRegTrainer 
 from offline_rl_ope.LowerBounds.HCOPE import get_lower_bound
 
-from offline_rl_ope.api.d3rlpy.Misc import D3RlPyTorchAlgoPredict
-from offline_rl_ope.types import PropensityTorchOutputType
+from offline_rl_ope.api.d3rlpy.Misc import D3RlPyStochasticWrapper
 
-from PropensityTrainingLoop import torch_training_loop
-
-class GaussianLossWrapper:
-    
-    def __init__(self) -> None:
-        self.scorer = torch.nn.GaussianNLLLoss()
-    
-    def __call__(
-        self, 
-        y_pred:PropensityTorchOutputType, 
-        y_true:Dict[str,torch.Tensor]
-        ) -> torch.Tensor:
-        res = self.scorer(
-            input=y_pred["loc"], 
-            var=y_pred["scale"], 
-            target=y_true["y"]
-            )
-        return res
+from PropensityTrainingLoop import torch_training_loop, GaussianLossWrapper
 
 if __name__ == "__main__":
     # obtain dataset
@@ -68,7 +50,7 @@ if __name__ == "__main__":
 
     observations = np.concatenate(observations)
     actions = np.concatenate(actions)
-
+    
     assert len(env.observation_space.shape) == 1
     estimator = FullGuassian(
             input_dim=env.observation_space.shape[0], 
@@ -113,10 +95,10 @@ if __name__ == "__main__":
     )
     
     policy_be = Policy(
-        policy_func=estimator.predict_proba, 
+        policy_func=estimator.policy_func, 
         collect_res=False
         )
-
+    
     no_obs_steps = int(len(actions)*0.025)
     n_epochs=1
     n_steps_per_epoch = no_obs_steps
@@ -145,14 +127,14 @@ if __name__ == "__main__":
 
         
     # Static OPE evaluation 
-    policy_func = D3RlPyTorchAlgoPredict(
-        predict_func=sac.predict,
-        action_dim=1
+    policy_func = D3RlPyStochasticWrapper(
+        policy_func=sac.impl.policy,
         )
-    eval_policy = GreedyDeterministic(
-        policy_func=policy_func, collect_res=False, 
-        collect_act=True, gpu=False
-        )
+    
+    eval_policy = Policy(
+        policy_func=policy_func, collect_act=True, collect_res=True, 
+        gpu=False
+    )
 
     episodes = []
     for ep in dataset.episodes:

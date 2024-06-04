@@ -5,7 +5,7 @@ import pickle
 from jaxtyping import jaxtyped, Float, Int
 from typeguard import typechecked as typechecker
 
-from ...types import StateArray, ActionArray
+from ...types import StateArray, ActionArray, NumpyPolicyReturn
 from ..base import PropensityTrainer
 
 __all__ = [
@@ -164,3 +164,16 @@ class SklearnDiscrete(PropensityTrainer):
         val:List[np.ndarray]
         ):
         self.__fitted_cls = val
+        
+    def policy_func(
+        self, 
+        x: StateArray, 
+        y: ActionArray, 
+        *args, 
+        **kwargs
+        ) -> NumpyPolicyReturn:
+        res = self.predict_proba(x=x,y=y)
+        return NumpyPolicyReturn(
+            actions=y,
+            action_prs=res
+            )

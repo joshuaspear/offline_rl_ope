@@ -9,7 +9,8 @@ from d3rlpy.dataset import ReplayBuffer
 from ....components.Policy import BasePolicy, GreedyDeterministic
 from ....components.ImportanceSampler import ISWeightOrchestrator
 from .base import OPECallbackBase
-from ..Misc import D3RlPyTorchAlgoPredict
+from ..Misc import D3RlPyDeterministicWrapper
+from ..Policy import PolicyFactory
 
 logger = logging.getLogger("offline_rl_ope")
 
@@ -25,8 +26,7 @@ class ISCallback(ISWeightOrchestrator, OPECallbackBase):
         is_types:List[str], 
         behav_policy: BasePolicy, 
         dataset: ReplayBuffer,
-        action_dim:int, 
-        eval_policy_kwargs:Dict[str,Any] = {},
+        policy_factory:PolicyFactory,
         debug:bool=False,
         debug_path:str="", 
         ) -> None:
@@ -36,12 +36,11 @@ class ISCallback(ISWeightOrchestrator, OPECallbackBase):
         self.states:List[torch.Tensor] = []
         self.actions:List[torch.Tensor] = []
         self.rewards:List[torch.Tensor] = []
-        self.action_dim = action_dim
+        self.policy_factory = policy_factory
         for traj in dataset.episodes:
             self.states.append(torch.Tensor(traj.observations))
             self.actions.append(torch.Tensor(traj.actions))
             self.rewards.append(torch.Tensor(traj.rewards))
-        self.eval_policy_kwargs = eval_policy_kwargs
         assert len(self.states[0].shape) == 2
         assert len(self.actions[0].shape) == 2
         assert self.rewards[0].shape[1] == 1
@@ -63,13 +62,6 @@ class ISCallback(ISWeightOrchestrator, OPECallbackBase):
         epoch:int, 
         total_step:int
         ) -> None:
-        policy_func = D3RlPyTorchAlgoPredict(
-            predict_func=algo.predict,
-            action_dim=self.action_dim
-            )
-        eval_policy = GreedyDeterministic(
-            policy_func=policy_func, 
-            **self.eval_policy_kwargs
-            )
+        eval_policy = self.policy_factory.create(algo=algo)
         self.update(states=self.states, actions=self.actions, 
                     eval_policy=eval_policy)

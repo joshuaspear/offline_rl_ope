@@ -1,0 +1,27 @@
+#!/bin/bash -eux
+echo "*****************************************"
+echo "**** Running static_xgboost_discrete ****"
+echo "*****************************************"
+python examples/static_xgboost_discrete.py
+
+echo "****************************************************"
+echo "**** Running static_torch_stochastic_continuous ****"
+echo "****************************************************"
+python examples/static_torch_stochastic_continuous.py
+
+
+echo "*******************************************************"
+echo "**** Running static_torch_deterministic_continuous ****"
+echo "*******************************************************"
+python examples/static_torch_deterministic_continuous.py
+
+
+echo "**********************************************"
+echo "**** Running d3rlpy_training_api_discrete ****"
+echo "**********************************************"
+python examples/d3rlpy_training_api_discrete.py
+
+echo "***********************************************************"
+echo "**** Running d3rlpy_training_api_continuous_stochastic ****"
+echo "***********************************************************"
+python examples/d3rlpy_training_api_continuous_stochastic.py

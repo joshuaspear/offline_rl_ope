@@ -13,9 +13,10 @@ from xgboost import XGBClassifier
 import pandas as pd
 import shutil
 
+from offline_rl_ope.api.d3rlpy.Policy import PolicyFactory
+
 # Import callbacks
 from offline_rl_ope.api.d3rlpy.Callbacks import (
-    
     ISCallback, FQECallback, EpochCallbackHandler, 
     DiscreteValueByActionCallback
     )
@@ -68,7 +69,7 @@ if __name__=="__main__":
     sklearn_trainer.fitted_cls = [pd.Series(actions).unique()]
 
     gbt_policy_be = Policy(
-        policy_func=NumpyPolicyFuncWrapper(sklearn_trainer.predict_proba), 
+        policy_func=NumpyPolicyFuncWrapper(sklearn_trainer.policy_func), 
         collect_res=False
         )
 
@@ -77,11 +78,13 @@ if __name__=="__main__":
         is_types=["vanilla", "per_decision"], 
         behav_policy=gbt_policy_be, 
         dataset=dataset,
-        action_dim=1,
-        eval_policy_kwargs={
-            "gpu": False, 
-            "collect_act": True   
-        }
+        policy_factory=PolicyFactory(
+            deterministic=True,
+            collect_res=False,
+            collect_act=True,
+            gpu=False,
+            action_dim=1
+        )
         )
 
     fqe_scorers = {

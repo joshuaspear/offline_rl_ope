@@ -78,7 +78,7 @@ class TorchClassTrainerTest(TestCase):
         trainer = TorchClassTrainer(
             estimator=estimator_mock1D,gpu=False
             )
-        pred = trainer.predict(x=in_x)
+        pred = trainer.predict(x=in_x.float())
         assert len(pred.shape) == 2
         assert isinstance(pred, torch.Tensor)
         nt.assert_array_equal(
@@ -91,7 +91,7 @@ class TorchClassTrainerTest(TestCase):
         trainer = TorchClassTrainer(
             estimator=estimator_mock1D,gpu=False
             )
-        pred = trainer.predict_proba(x=in_x,y=in_y)
+        pred = trainer.predict_proba(x=in_x.float(),y=in_y.float())
         assert len(pred.shape) == 2
         assert isinstance(pred, torch.Tensor)
         nt.assert_array_equal(

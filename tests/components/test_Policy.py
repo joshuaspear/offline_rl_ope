@@ -4,6 +4,7 @@ import torch
 import numpy as np
 from offline_rl_ope.components.Policy import (
     GreedyDeterministic, Policy)
+from offline_rl_ope.types import TorchPolicyReturn
 from offline_rl_ope import logger
 from parameterized import parameterized_class
 from ..base import test_configs_fmt_class, TestConfig
@@ -25,34 +26,36 @@ class GreedyDeterministicTest(unittest.TestCase):
                     self.test_conf.test_eval_action_vals
                     )
                 }
-            return lkp[str(x)]
+            return TorchPolicyReturn(
+                actions=lkp[str(x)], 
+                action_prs=None)
         policy_func = MagicMock(side_effect=__mock_return)
         self.policy_0_eps = GreedyDeterministic(policy_func, gpu=False)
         self.policy_001_eps = GreedyDeterministic(
             policy_func, gpu=False, eps=eps)
         
-        def __mock_return_multi_dim(x):
-            lkp = {
-                str(torch.Tensor(state)):torch.concat(
-                    [torch.Tensor(act),torch.abs(1-torch.Tensor(act))],
-                    dim=1
-                    ) 
-                for state,act in zip(
-                    self.test_conf.test_state_vals, 
-                    self.test_conf.test_eval_action_vals
-                    )
-                }
-            return lkp[str(x)]
-        policy_func_multi_dim = MagicMock(side_effect=__mock_return_multi_dim)
-        self.policy_0_eps_multi_dim = GreedyDeterministic(
-            policy_func_multi_dim, 
-            gpu=False
-            )
-        self.policy_001_eps_multi_dim = GreedyDeterministic(
-            policy_func_multi_dim, 
-            gpu=False, 
-            eps=eps
-            )
+        # def __mock_return_multi_dim(x):
+        #     lkp = {
+        #         str(torch.Tensor(state)):torch.concat(
+        #             [torch.Tensor(act),torch.abs(1-torch.Tensor(act))],
+        #             dim=1
+        #             ) 
+        #         for state,act in zip(
+        #             self.test_conf.test_state_vals, 
+        #             self.test_conf.test_eval_action_vals
+        #             )
+        #         }
+        #     return lkp[str(x)]
+        # policy_func_multi_dim = MagicMock(side_effect=__mock_return_multi_dim)
+        # self.policy_0_eps_multi_dim = GreedyDeterministic(
+        #     policy_func_multi_dim, 
+        #     gpu=False
+        #     )
+        # self.policy_001_eps_multi_dim = GreedyDeterministic(
+        #     policy_func_multi_dim, 
+        #     gpu=False, 
+        #     eps=eps
+        #     )
     
     def test___call__0_eps(self):
         test_pred = []
@@ -179,7 +182,10 @@ class PolicyTest(unittest.TestCase):
             print(f"y: {y}")
             print(f"lkp: {list(lkp.keys())[0]}")
             print(f'id: {"_".join([str(x),str(y)])}')
-            return lkp["_".join([str(x),str(y)])]
+            return TorchPolicyReturn(
+                actions=None, 
+                action_prs=lkp["_".join([str(x),str(y)])]
+                )
         #policy_func = MockPolicyClass()
         #policy_func.__call__ = MagicMock(side_effect=__mock_return)
         #self.policy = BehavPolicy(policy_func)

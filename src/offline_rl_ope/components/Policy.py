@@ -3,10 +3,16 @@ import torch
 from typing import Callable, List
 from jaxtyping import jaxtyped, Float
 from typeguard import typechecked as typechecker
-import numpy as np
 
 from ..RuntimeChecks import check_array_dim
-from ..types import (StateTensor,ActionTensor,StateArray,ActionArray)
+from ..types import (
+    StateTensor,
+    ActionTensor,
+    StateArray,
+    ActionArray,
+    TorchPolicyReturn,
+    NumpyPolicyReturn
+    )
 
 
 def postproc_pass(x:torch.Tensor)->torch.Tensor:
@@ -27,7 +33,10 @@ __all__ = [
 
 class NumpyPolicyFuncWrapper:
     
-    def __init__(self, policy_func:Callable[..., torch.Tensor]) -> None:
+    def __init__(
+        self, 
+        policy_func:Callable[[StateArray,ActionArray], NumpyPolicyReturn]
+        ) -> None:
         self.policy_func = policy_func
     
     def __call__(
@@ -39,11 +48,14 @@ class NumpyPolicyFuncWrapper:
             state.cpu().detach().numpy(),
             action.cpu().detach().numpy(),
             )
-        return torch.Tensor(res)
+        return res.get_torch_policy_return()
     
 class NumpyGreedyPolicyFuncWrapper:
     
-    def __init__(self, policy_func:Callable[..., torch.Tensor]) -> None:
+    def __init__(
+        self, 
+        policy_func:Callable[[StateArray], NumpyPolicyReturn]
+        ) -> None:
         self.policy_func = policy_func
     
     def __call__(
@@ -53,14 +65,14 @@ class NumpyGreedyPolicyFuncWrapper:
         res = self.policy_func(
             state.cpu().detach().numpy()
             )
-        return torch.Tensor(res)
+        return res.get_torch_policy_return()
 
 
 class BasePolicy(metaclass=ABCMeta):
     
     def __init__(
         self, 
-        policy_func:Callable[..., torch.Tensor], 
+        policy_func:Callable[...,TorchPolicyReturn], 
         collect_res:bool=False, 
         collect_act:bool=False, 
         gpu:bool=False
@@ -130,7 +142,7 @@ class Policy(BasePolicy):
         self, 
         policy_func:Callable[
             [StateTensor,ActionTensor], 
-            Float[torch.Tensor, "traj_length 1"]
+            TorchPolicyReturn
             ], 
         collect_res:bool=False, 
         collect_act:bool=False, 
@@ -149,16 +161,18 @@ class Policy(BasePolicy):
         # assert isinstance(action,torch.Tensor)
         # check_array_dim(action,2)
         state = self.preproc_tens(state)
-        res = self.policy_func(state, action)
-        res = self.postproc_tens(res)
-        self.collect_res_fn(res)
-        return res
+        p_return = self.policy_func(state, action)
+        actions = self.postproc_tens(p_return.actions)
+        action_prs = self.postproc_tens(p_return.action_prs)
+        self.collect_res_fn(action_prs)
+        self.collect_act_func(actions)
+        return p_return.action_prs
 
 class GreedyDeterministic(BasePolicy):
     
     def __init__(
         self, 
-        policy_func:Callable[[torch.Tensor], torch.Tensor], 
+        policy_func:Callable[[StateTensor], TorchPolicyReturn], 
         collect_res:bool=False, 
         collect_act:bool=False, 
         gpu:bool=False, 
@@ -178,7 +192,8 @@ class GreedyDeterministic(BasePolicy):
         # assert isinstance(action,torch.Tensor)
         # check_array_dim(action,2)
         state = self.preproc_tens(state)
-        greedy_action = self.policy_func(state)
+        p_return = self.policy_func(state)
+        greedy_action = p_return.actions
         check_array_dim(greedy_action,2)
         assert action.shape == greedy_action.shape
         greedy_action = self.postproc_tens(greedy_action)
@@ -189,4 +204,3 @@ class GreedyDeterministic(BasePolicy):
         res = res_eps_upper + res_eps_lower
         self.collect_res_fn(res)
         return res
-    
