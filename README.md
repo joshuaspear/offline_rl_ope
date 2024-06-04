@@ -65,6 +65,9 @@ Basic unit testing has been implemented for all the core functionality of the pa
 * PyPi: https://pypi.org/project/offline-rl-ope/
 * To install from sourse using pip, clone this repository and run ```pip install .``` in the top level of the repo.
 
+### Limitations
+* When using DM methods with the d3rlpy training API, the FQE model is required to be refitted for every epoch. This could be improved by trainin the FQE model once, before training of the offline RL model commences
+
 ### Future work
 * Async/multithread support
 * Additional estimators:
@@ -72,9 +75,8 @@ Basic unit testing has been implemented for all the core functionality of the pa
   * MAGIC
   * Extended DR estimator as per equation 12 in https://arxiv.org/pdf/1511.03722.pdf
 * APIs
-  * Extend d3rlpy
   * Add additional apis e.g. for stable baselines
-* Continuous action spaces
+  * Address limitations with existing DM integration with d3rlpy
 
 
 ### Tips
