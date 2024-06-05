@@ -1,9 +1,9 @@
 # offline_rl_ope
 
-**WARNING**
-- All IS methods implemented incorrectly in versions < 6.x
-- Unit testing currently only running in Python 3.11. 3.10 will be supported in the future
-- Not all functionality has been tested i.e., d3rlpy api and LowerBounds are still in beta
+> [!WARNING]
+> - All IS methods implemented incorrectly in versions < 6.x
+> - Unit testing currently only running in Python 3.11. 3.10 will be supported in the future
+> - Not all functionality has been tested i.e., d3rlpy api and LowerBounds are still in beta
 
 ### Testing progress
 - [x] components/
@@ -27,10 +27,10 @@ Insufficient functionality to test DirectMethod.py i.e., currently only wrapper 
 #### Overview
 Basic unit testing has been implemented for all the core functionality of the package. The d3rlpy/api for importance sampling adds minimal additional functionality therefore, it is likely to function as expected however, no sepcific unit testing has been implemented! 
 
-**IMPORTANT**:
-* More documentation needs to be added however, please refer to examples/ for an illustration of the functionality
-  * examples/static.py provides an illustration of the package being used for evaluation post training. Whilst the d3rlpy package is used for model training, the script is agnostic to the evaluation model used
-  * examples/d3rlpy_training_api.py provides an illustration of how the package can be used to obtain incremental performance statistics during the training of d3rlpy models. It provides greater functionality to the native scorer metrics included in d3rlpy
+> [!IMPORTANT]
+> * More documentation needs to be added however, please refer to examples/ for an illustration of the functionality
+> * examples/static.py provides an illustration of the package being used for evaluation post training. Whilst the d3rlpy package is used for model training, the script is agnostic to the evaluation model used
+> * examples/d3rlpy_training_api.py provides an illustration of how the package can be used to obtain incremental performance statistics during the training of d3rlpy models. It provides greater functionality to the native scorer metrics included in d3rlpy
 
 ### Description
 * offline_rl_ope aims to provide flexible and efficient implementations of OPE algorithms for use when training offline RL models. The main audience is researchers developing smaller, non-distributed models i.e., those who do not want to use packages such as ray (https://github.com/ray-project/ray).
