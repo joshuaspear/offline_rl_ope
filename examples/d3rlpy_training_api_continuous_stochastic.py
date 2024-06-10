@@ -29,7 +29,7 @@ from offline_rl_ope.api.d3rlpy.Callbacks import (
 
 # Import evaluators
 from offline_rl_ope.api.d3rlpy.Scorers import (
-    ISEstimatorScorer
+    ISEstimatorScorer, QueryScorer
     )
 from offline_rl_ope.components.Policy import Policy
 
@@ -161,8 +161,8 @@ if __name__=="__main__":
         discount=gamma, cache=is_callback, is_type="per_decision", 
         norm_weights=True)})
         
-    # for scr in fqe_scorers:
-    #     scorers.update({scr: QueryScorer(cache=fqe_callback, query_key=scr)})
+    for scr in fqe_scorers:
+        scorers.update({scr: QueryScorer(cache=fqe_callback, query_key=scr)})
 
     epoch_callback = EpochCallbackHandler([is_callback, fqe_callback])
 

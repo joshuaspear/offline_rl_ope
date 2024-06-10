@@ -146,8 +146,8 @@ if __name__=="__main__":
                 }
             )
         
-    # for scr in fqe_scorers:
-    #     scorers.update({scr: QueryScorer(cache=fqe_callback, query_key=scr)})
+    for scr in fqe_scorers:
+        scorers.update({scr: QueryScorer(cache=fqe_callback, query_key=scr)})
 
     epoch_callback = EpochCallbackHandler([is_callback, fqe_callback, dva_callback])
 

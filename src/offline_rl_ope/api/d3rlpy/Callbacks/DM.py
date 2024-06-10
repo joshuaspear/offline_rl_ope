@@ -74,7 +74,7 @@ class FQECallback(QueryCallbackBase):
         _msg = "Must provide n_steps_per_epoch for FQE training"
         assert "n_steps_per_epoch" in self.__model_fit_kwargs, _msg
         
-        fqe.fit(
+        res = fqe.fit(
             self.__dataset, 
             evaluators=self.__scorers, 
             **self.__model_fit_kwargs, 
@@ -83,15 +83,7 @@ class FQECallback(QueryCallbackBase):
             experiment_name=f"EXP_{str(self.__cur_exp)}"
             )
 
-        res:Dict = {}
-        for scr in self.__scorers:
-            __file_path = os.path.join(
-                self.__logs_loc, "EXP_{}".format(self.__cur_exp), 
-                "{}.csv".format(scr))
-            lines = np.genfromtxt(__file_path, delimiter=',')
-            if len(lines.shape) == 1:
-                lines = lines.reshape(-1,1)
-            res[scr] = lines[-1:,-1].item()
+        res = res[-1][1]
         self.__cur_exp += 1
         self.cache = res
 
