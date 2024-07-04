@@ -1,4 +1,4 @@
-# offline_rl_ope
+# offline_rl_ope: Efficient and customisable package for performing offline RL OPE on realworld data in Python
 
 > [!WARNING]
 > - All IS methods implemented incorrectly in versions < 6.x
