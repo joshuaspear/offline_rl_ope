@@ -65,11 +65,13 @@ class UtilsTestVanillaIS(unittest.TestCase):
     
     def test_norm_weights_wis(self):
         """Vanilla IS with WIS averaging:
-        w_{H,i}=\prod_{t=0}^{H}w_{t,i}
-        w_{H} = \sum_{i=1}^{n} w_{H,i}
-        $\frac{1}/{w_{H}}\sum_{i=1}^{n}\sum_{t=0}^{H}r_{t,i}\gamma^{t}w_{H,i}$
-        => The output should be of the form:
-        \frac{1}/{w_{H}}w_{H,i}
+        .. math::
+            w_{H,i}=\prod_{t=0}^{H}w_{t,i}
+            w_{H} = \sum_{i=1}^{n} w_{H,i}
+            $\frac{1}/{w_{H}}\sum_{i=1}^{n}\sum_{t=0}^{H}r_{t,i}\gamma^{t}w_{H,i}$
+        The output should be of the form:
+        .. math::
+            \frac{1}/{w_{H}}w_{H,i}
         """
         # test_conf.traj_is_weights_is defines the Vanilla IS one step weights 
         # i.e., w_{H,i}
@@ -84,8 +86,8 @@ class UtilsTestVanillaIS(unittest.TestCase):
             term_weights.append(traj[idx-1])
         term_weights = torch.tensor(term_weights)
         # Sum over the weights as we are not doing cumulative
-        denom = term_weights.sum().repeat((1,max(term_idx)))
-        denom_toll = denom.squeeze().mean().numpy()/1000
+        denom = term_weights.sum()
+        denom_toll = denom.squeeze().numpy()/1000
         test_res = self.test_conf.traj_is_weights_is/denom
         toll = test_res.mean()/1000
         calculator = WISWeightNorm()
@@ -109,16 +111,17 @@ class UtilsTestVanillaIS(unittest.TestCase):
         
     def test_norm_weights_wis_cum(self):
         """Vanilla IS with WIS cumulative averaging:
-        $w_{H,i}=\prod_{t=0}^{H}w_{t,i}$
-        $w_{H,t} = \sum_{i=1}^{n} w_{H,i}\mathbb{1}_{m_{i,t}\neq=0}$
-        $\sum_{i=1}^{n}\sum_{t=0}^{H}r_{t,i}\gamma^{t}\frac{1}/{w_{H,t}}w_{H,i}$
-        => The output should be of the form:
+        .. math::
+        w_{H,i} = \prod_{t=0}^{H}w_{t,i}
+        w_{H,t} = \sum_{i=1}^{n}\sum_{t=0}^{H}w_{H,i}
+        \sum_{i=1}^{n}\sum_{t=0}^{H}r_{t,i}\gamma^{t}\frac{1}/{w_{H,t}}w_{H,i}
+        The output should be of the form:
+        .. math::
         $\frac{1}/{w_{H,t}}w_{H,i}$
         """
-        # Sum across the trajectories to get the time t cumulative weight
-        # Note, the weight is already cumulative due to PD input
-        denom = self.test_conf.traj_is_weights_is.sum(dim=0, keepdim=True)
-        denom_toll = denom.squeeze().mean().numpy()/1000
+        # \sum_{i=1}^{n}\sum_{t=0}^{H}w_{H,i}
+        denom = self.test_conf.traj_is_weights_is.sum()
+        denom_toll = denom.squeeze().numpy()/1000
         test_res = self.test_conf.traj_is_weights_is/denom
         toll = test_res.mean()/1000
         calculator = WISWeightNorm(cumulative=True)
@@ -154,8 +157,8 @@ class UtilsTestVanillaIS(unittest.TestCase):
             term_weights.append(traj[idx-1])
         term_weights = torch.tensor(term_weights)
         # Sum over the weights as we are not doing cumulative
-        denom = term_weights.sum().repeat((1,max(term_idx))) + smooth_eps
-        denom_toll = denom.squeeze().mean().numpy()/1000
+        denom = term_weights.sum() + smooth_eps
+        denom_toll = denom.squeeze().numpy()/1000
         test_res = self.test_conf.traj_is_weights_is_alter/denom
         toll = test_res.mean()/1000
         calculator = WISWeightNorm(smooth_eps=smooth_eps)
@@ -190,8 +193,8 @@ class UtilsTestVanillaIS(unittest.TestCase):
             term_weights.append(traj[idx-1])
         term_weights = torch.tensor(term_weights)
         # Sum over the weights as we are not doing cumulative
-        denom = term_weights.sum().repeat((1,max(term_idx)))
-        denom_toll = denom.squeeze().mean().numpy()/1000
+        denom = term_weights.sum()
+        denom_toll = denom.squeeze().numpy()/1000
         test_res = self.test_conf.traj_is_weights_is_alter/denom
         toll = test_res.mean()/1000
         calculator = WISWeightNorm()
@@ -226,8 +229,8 @@ class UtilsTestVanillaIS(unittest.TestCase):
             term_weights.append(traj[idx-1])
         term_weights = torch.tensor(term_weights)
         # Sum over the weights as we are not doing cumulative
-        denom = term_weights.sum().repeat((1,max(term_idx)))
-        denom = (denom/len(term_idx)) + smooth_eps
+        denom = term_weights.sum() + smooth_eps
+        denom = (denom/len(term_idx))
         denom_toll = denom.squeeze().mean().numpy()/1000
         test_res = self.test_conf.traj_is_weights_is_alter/denom
         toll = test_res.mean()/1000
@@ -262,7 +265,7 @@ class UtilsTestVanillaIS(unittest.TestCase):
             term_weights.append(traj[idx-1])
         term_weights = torch.tensor(term_weights)
         # Sum over the weights as we are not doing cumulative
-        denom = term_weights.sum().repeat((1,max(term_idx)))
+        denom = term_weights.sum()
         denom = (denom/len(term_idx))
         denom_toll = denom.squeeze().mean().numpy()/1000
         test_res = self.test_conf.traj_is_weights_is_alter/denom
@@ -316,8 +319,8 @@ class UtilsTestPD(unittest.TestCase):
         """WPD:
         w_{H,i}=\prod_{t=0}^{H}w_{t,i}
         w_{H} = \sum_{i=1}^{n} w_{H,i}
-        $\frac{1}/{w_{H}}\sum_{i=1}^{n}\sum_{t=0}^{H}r_{t,i}\gamma^{t}\prod_{t=0}^{t'}w_{t,i}$
-        => The output should be of the form:
+        \frac{1}/{w_{H}}\sum_{i=1}^{n}\sum_{t=0}^{H}r_{t,i}\gamma^{t}\prod_{t=0}^{t'}w_{t,i}
+        The output should be of the form:
         \frac{1}/{w_{H}}\prod_{t=0}^{t'}w_{t,i}
         """
         term_idx = [len(i) for i in self.test_conf.test_act_indiv_weights]
@@ -326,8 +329,8 @@ class UtilsTestPD(unittest.TestCase):
             term_weights.append(traj[idx-1])
         term_weights = torch.tensor(term_weights)
         # Sum over the weights as we are not doing cumulative
-        denom = term_weights.sum().repeat((1,max(term_idx)))
-        denom_toll = denom.squeeze().mean().numpy()/1000
+        denom = term_weights.sum()
+        denom_toll = denom.squeeze().numpy()/1000
         test_res = self.test_conf.traj_is_weights_pd/denom
         toll = test_res.mean()/1000
         calculator = WISWeightNorm()
@@ -359,9 +362,9 @@ class UtilsTestPD(unittest.TestCase):
         """
         # Sum across the trajectories to get the time t cumulative weight
         # Note, the weight is already cumulative due to PD input
-        denom = self.test_conf.traj_is_weights_pd.sum(dim=0, keepdim=True)
+        denom = self.test_conf.traj_is_weights_pd.sum()
         # No need to alter shape
-        denom_toll = denom.squeeze().mean().numpy()/1000
+        denom_toll = denom.squeeze().numpy()/1000
         test_res = self.test_conf.traj_is_weights_pd/denom
         toll = test_res.mean()/1000
         calculator = WISWeightNorm(cumulative=True)
@@ -397,8 +400,8 @@ class UtilsTestPD(unittest.TestCase):
             term_weights.append(traj[idx-1])
         term_weights = torch.tensor(term_weights)
         # Sum over the weights as we are not doing cumulative
-        denom = term_weights.sum().repeat((1,max(term_idx))) + smooth_eps
-        denom_toll = denom.squeeze().mean().numpy()/1000
+        denom = term_weights.sum() + smooth_eps
+        denom_toll = denom.squeeze().numpy()/1000
         test_res = self.test_conf.traj_is_weights_pd_alter/denom
         toll = test_res.mean()/1000
         calculator = WISWeightNorm(smooth_eps=smooth_eps)
@@ -433,8 +436,8 @@ class UtilsTestPD(unittest.TestCase):
             term_weights.append(traj[idx-1])
         term_weights = torch.tensor(term_weights)
         # Sum over the weights as we are not doing cumulative
-        denom = term_weights.sum().repeat((1,max(term_idx)))
-        denom_toll = denom.squeeze().mean().numpy()/1000
+        denom = term_weights.sum()
+        denom_toll = denom.squeeze().numpy()/1000
         test_res = self.test_conf.traj_is_weights_pd_alter/denom
         toll = test_res.mean()/1000
         calculator = WISWeightNorm()
@@ -469,9 +472,9 @@ class UtilsTestPD(unittest.TestCase):
             term_weights.append(traj[idx-1])
         term_weights = torch.tensor(term_weights)
         # Sum over the weights as we are not doing cumulative
-        denom = term_weights.sum().repeat((1,max(term_idx)))
-        denom = (denom/len(term_idx)) + smooth_eps
-        denom_toll = denom.squeeze().mean().numpy()/1000
+        denom = term_weights.sum() + smooth_eps
+        denom = (denom/len(term_idx))
+        denom_toll = denom.squeeze().numpy()/1000
         test_res = self.test_conf.traj_is_weights_pd_alter/denom
         toll = test_res.mean()/1000
         calculator = WISWeightNorm(smooth_eps=smooth_eps, avg_denom=True)
@@ -505,9 +508,9 @@ class UtilsTestPD(unittest.TestCase):
             term_weights.append(traj[idx-1])
         term_weights = torch.tensor(term_weights)
         # Sum over the weights as we are not doing cumulative
-        denom = term_weights.sum().repeat((1,max(term_idx)))
+        denom = term_weights.sum()
         denom = (denom/len(term_idx))
-        denom_toll = denom.squeeze().mean().numpy()/1000
+        denom_toll = denom.squeeze().numpy()/1000
         test_res = self.test_conf.traj_is_weights_pd_alter/denom
         toll = test_res.mean()/1000
         calculator = WISWeightNorm(avg_denom=True)

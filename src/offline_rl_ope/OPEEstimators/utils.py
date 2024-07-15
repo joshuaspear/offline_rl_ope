@@ -44,7 +44,7 @@ class WISWeightNorm(WeightNorm):
         self, 
         traj_is_weights:WeightTensor, 
         is_msk:WeightTensor
-        ) -> Float[torch.Tensor, "1 traj_length"]:
+        ) -> Float[torch.Tensor,""]:
         """Calculates the denominator for weighted importance sampling.
         smooth_eps prevents nan values occuring in instances where there exists
         valid time t importance ratios however, these are all 0. This should
@@ -92,8 +92,7 @@ class WISWeightNorm(WeightNorm):
                 ith trajectory was observed
 
         Returns:
-            torch.Tensor: Tensor of dimension (1 max(traj_length)) 
-            defining the normalisation value for each timestep
+            torch.Tensor: float defining the global normalisation value
         """
         # assert isinstance(traj_is_weights,torch.Tensor)
         # assert isinstance(is_msk,torch.Tensor)
@@ -102,16 +101,14 @@ class WISWeightNorm(WeightNorm):
         # check_array_dim(is_msk,2)
         if self.cumulative:
             # For each timepoint, sum across the trajectories
-            denom = (
-                traj_is_weights.sum(dim=0, keepdim=True) + self.smooth_eps
-                )
+            denom = torch.mul(traj_is_weights,is_msk).sum() + self.smooth_eps
         else:
             # Find the index of the final step for each trajectory
             _final_idx = is_msk.cumsum(dim=1).argmax(dim=1)
             # Find the associated weight of each trajectory and sum
             denom = traj_is_weights[
                 torch.arange(traj_is_weights.shape[0]), _final_idx].sum()
-            denom = denom.repeat((1,traj_is_weights.shape[1])) + self.smooth_eps
+            denom = denom + self.smooth_eps
 
         if self.avg_denom:
             denom = denom/traj_is_weights.shape[0]
