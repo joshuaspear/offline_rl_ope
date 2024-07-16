@@ -8,6 +8,21 @@ from ..types import WeightTensor
 
 class WeightNorm(metaclass=ABCMeta):
     
+    def __init__(
+        self,
+        avg_denom:bool=False
+        ) -> None:
+        assert isinstance(avg_denom,bool)
+        self.avg_denom = avg_denom
+    
+    def avg_weights(
+        self, 
+        traj_is_weights:WeightTensor
+        ) -> WeightTensor:
+        if self.avg_denom:
+            traj_is_weights = traj_is_weights/traj_is_weights.shape[0]
+        return traj_is_weights
+    
     @abstractmethod
     def __call__(
         self, 
@@ -32,12 +47,12 @@ class WISWeightNorm(WeightNorm):
         *args, 
         **kwargs
         ) -> None:
+        super().__init__(avg_denom=avg_denom)
         assert isinstance(smooth_eps,float)
-        assert isinstance(avg_denom,bool)
         assert isinstance(cumulative,bool)
         self.smooth_eps = smooth_eps
-        self.avg_denom = avg_denom
         self.cumulative = cumulative
+        
         
     @jaxtyped(typechecker=typechecker)    
     def calc_norm(
@@ -109,9 +124,6 @@ class WISWeightNorm(WeightNorm):
             denom = traj_is_weights[
                 torch.arange(traj_is_weights.shape[0]), _final_idx].sum()
             denom = denom + self.smooth_eps
-
-        if self.avg_denom:
-            denom = denom/traj_is_weights.shape[0]
         return denom
 
     @jaxtyped(typechecker=typechecker)
@@ -142,14 +154,18 @@ class WISWeightNorm(WeightNorm):
         # check_array_dim(is_msk,2)
         denom = self.calc_norm(traj_is_weights=traj_is_weights, is_msk=is_msk)
         res = traj_is_weights/denom
+        res = self.avg_weights(traj_is_weights=res)
         return res
 
 
     
 class VanillaNormWeights(WeightNorm):
     
-    def __init__(self, *args, **kwargs) -> None:
-        pass
+    def __init__(
+        self, 
+        avg_denom:bool=True
+        ) -> None:
+        super().__init__(avg_denom=avg_denom)
 
     @jaxtyped(typechecker=typechecker)
     def __call__(
@@ -174,7 +190,9 @@ class VanillaNormWeights(WeightNorm):
         # check_array_dim(traj_is_weights,2)
         # The first dimension defines the number of trajectories and we require
         # the average over trajectories
-        return traj_is_weights/traj_is_weights.shape[0]
+        res = torch.mul(traj_is_weights,is_msk)
+        res = self.avg_weights(traj_is_weights=res)
+        return res
 
 @jaxtyped(typechecker=typechecker)
 def clip_weights(

@@ -1,5 +1,6 @@
 import numpy as np
 import torch
+from torch.nn.functional import pad
 from typing import Any, List, Dict
 import math
 from jaxtyping import jaxtyped, Float
@@ -11,12 +12,12 @@ from ..types import (
     StateTensor,
     ActionTensor,
     SingleTrajSingleStepTensor)
-from .IS import ISEstimatorBase
+from .IS import ISEstimator
 from .DirectMethod import DirectMethodBase
+from ..RuntimeChecks import check_array_shape
 
 
-
-class DREstimator(ISEstimatorBase):
+class DREstimator(ISEstimator):
     """ Doubly robust estimator implemented as per: 
     https://arxiv.org/pdf/1511.03722.pdf
     """
@@ -28,14 +29,12 @@ class DREstimator(ISEstimatorBase):
         clip_weights:bool=False,  
         clip:float=0.0, 
         cache_traj_rewards:bool=False, 
-        ignore_nan:bool=False, 
         norm_kwargs:Dict[str,Any] = {}
         ) -> None:
         assert isinstance(dm_model,DirectMethodBase)
         assert isinstance(norm_weights,bool)
         assert isinstance(clip,(float,type(None)))
         assert isinstance(cache_traj_rewards,bool)
-        assert isinstance(ignore_nan,bool)
         assert isinstance(norm_kwargs,Dict)
         super().__init__(
             norm_weights=norm_weights,
@@ -45,147 +44,21 @@ class DREstimator(ISEstimatorBase):
             norm_kwargs=norm_kwargs
             )
         self.dm_model = dm_model
-        if ignore_nan:
-            self.ignore_nan = self.__ignore_nan
-        else:
-            self.ignore_nan = self.__raise_nan
-
-    @jaxtyped(typechecker=typechecker)
-    def __ignore_nan(
-        self, 
-        p_t:SingleTrajSingleStepTensor
-        )->SingleTrajSingleStepTensor:
-        # assert isinstance(p_t,torch.Tensor)
-        if math.isnan(p_t):
-            res = torch.tensor([0.0])
-        else:
-            res = p_t
-        return res
-
-    @jaxtyped(typechecker=typechecker)
-    def __raise_nan(
-        self, 
-        p_t:SingleTrajSingleStepTensor
-        )->SingleTrajSingleStepTensor:
-        # assert isinstance(p_t,torch.Tensor)
-        return p_t
-
-    @jaxtyped(typechecker=typechecker)
-    def __update_step(
-        self, 
-        v_t:SingleTrajSingleStepTensor, 
-        p_t:SingleTrajSingleStepTensor,
-        r_t:SingleTrajSingleStepTensor, 
-        v_dr_t:SingleTrajSingleStepTensor, 
-        gamma:SingleTrajSingleStepTensor, 
-        q_t:SingleTrajSingleStepTensor
-        )->SingleTrajSingleStepTensor:
-        """ Predicts the time t+1 doubly robust value prediction based on time
-            t values
-
-        Args:
-            v_t (torch.Tensor): tensor of size 0, representing the time t state 
-                value from a Direct Method
-            p_t (torch.Tensor): tensor of size 0, representing the time t 
-                importance weight
-            r_t (torch.Tensor): tensor of size 0, representing the time t 
-                observed reward
-            v_dr_t (torch.Tensor): tensor of size 0, representing the time t 
-                doubly robust value prediction
-            gamma (torch.Tensor): tensor of size 0, representing the time t 
-                one step discount factor. Note, this is usually kept constant
-            q_t (torch.Tensor): tensor of size 0, representing the time t 
-                state-action value from a Direct Method.
-
-        Returns:
-            torch.Tensor: tensor of size 0, representing the doubly robust value
-                prediction at time t+1
-        """
-        # check_array_dim(v_t,1)
-        # check_array_dim(p_t,1)
-        # check_array_dim(r_t,1)
-        # check_array_dim(v_dr_t,1)
-        # check_array_dim(q_t,1)
-        # assert isinstance(v_t,torch.Tensor)
-        # assert isinstance(p_t,torch.Tensor)
-        # assert isinstance(r_t,torch.Tensor)
-        # assert isinstance(v_dr_t,torch.Tensor)
-        # assert isinstance(gamma,torch.Tensor)
-        # assert isinstance(q_t,torch.Tensor)
-        p_t = self.ignore_nan(p_t)
-        res = v_t + p_t*(r_t + gamma*v_dr_t - q_t)
-        return res
-    
-    @jaxtyped(typechecker=typechecker)
-    def get_traj_discnt_reward(
-        self, 
-        reward_array:RewardTensor,
-        discount:float, 
-        state_array:StateTensor, 
-        action_array:ActionTensor, 
-        weight_array:WeightTensor,
-        )->SingleTrajSingleStepTensor:
-        """ Takes in a tensor of reward values for a trajectory and outputs 
-        a tensor of discounted reward values i.e. Tensor([r_{t}*\gamma_{t}])
-
-        Args:
-            reward_array (torch.Tensor): Tensor of dimension (traj_length)
-            discount (float): One step discount value to apply
-            action_array (torch.Tensor): Tensor of dimension 
-            (traj_length, n_actions)
-            state_array (torch.Tensor): Tensor of dimension 
-            (traj_length, n_states)
-            weight_array (torch.Tensor): Tensor of dimension (traj_length, 1)
-
-        Returns:
-            torch.Tensor: Tensor of discounted reward values of dimension 
-            (traj_length)
-        """
-        # check_array_dim(reward_array,2)
-        # check_array_dim(state_array,2)
-        # check_array_dim(action_array,2)
-        # check_array_dim(weight_array,2)
-        # assert reward_array.shape[1] == 1
-        # assert isinstance(reward_array,torch.Tensor)
-        # assert isinstance(discount,float)
-        # assert isinstance(state_array,torch.Tensor)
-        # assert isinstance(action_array,torch.Tensor)
-        # assert isinstance(weight_array,torch.Tensor)
-        v_dr = torch.tensor([0.0])
-        discount = torch.tensor([discount])
-        v = self.dm_model.get_v(
-            state=state_array
-            )
-        q = self.dm_model.get_q(
-            state=state_array, action=action_array
-            )
-        reward_array = torch.flip(reward_array, dims=[0])
-        v = torch.flip(v, dims=[0])
-        q = torch.flip(q, dims=[0])
-        weight_array = torch.flip(weight_array, dims=[0])
-        for r_t, v_t, q_t, p_t in zip(reward_array,v,q,weight_array):
-            v_dr = self.__update_step(
-                v_t=v_t, 
-                p_t=p_t, 
-                r_t=r_t, 
-                v_dr_t=v_dr, 
-                gamma=discount, 
-                q_t=q_t
-                )
-        return v_dr
-
+            
     @jaxtyped(typechecker=typechecker)
     def predict_traj_rewards(
         self, 
         rewards:List[torch.Tensor], 
         states:List[torch.Tensor], 
         actions:List[torch.Tensor], 
-        weights:WeightTensor, 
+        weights:WeightTensor,
         discount:float, 
         is_msk:WeightTensor
         )->Float[torch.Tensor, "n_trajectories"]:
-        """Function for subclasses to override defining the trajectory level
-        estimates of return
+        """Main calculation function:
+            1. Loops over a dataset of trajectories of undiscounted rewards;
+            2. Processes one step weights (i.e., clipping and weighting)
+            3. Calculates the individual trajectory reward
 
         Args:
             rewards (List[torch.Tensor]): List of Tensors of undiscounted 
@@ -213,20 +86,97 @@ class DREstimator(ISEstimatorBase):
         l_w = weights.shape[0]
         _msg = f"State({l_s}), rewards({l_r}), actions({l_a}), mask({l_w}) should be equal"
         assert l_s==l_r==l_a==l_w, _msg
-        # assert weights.shape == is_msk.shape
-        # check_array_dim(weights,2)
-        # check_array_dim(is_msk,2)
+        # discnt_rewards dim is (n_trajectories, max_length)
+        h = weights.shape[1]
+        n_traj = len(states)
+        discnt_rewards = self.get_dataset_discnt_reward(
+            rewards=rewards, discount=discount, h=h)
+        # weights dim is (n_trajectories, max_length)
         weights = self.process_weights(weights=weights, is_msk=is_msk)
-        # Tensor looses shape when masked
-        weights = torch.masked_select(weights, is_msk > 0)
-        weights_lst:List[torch.Tensor] = torch.split(
-            weights, is_msk.sum(axis=1).type(torch.int64).tolist())
-        reward_res = torch.zeros(size=(len(rewards),))
-        for i, (r,s,a,w) in enumerate(
-            zip(rewards, states, actions, weights_lst)):
-            reward = self.get_traj_discnt_reward(
-                reward_array=r, state_array=s, action_array=a, 
-                # Reshape weight matrix due to previous mask
-                weight_array=w.reshape(-1,1), discount=discount) 
-            reward_res[i] = reward
-        return reward_res
+        print(weights)
+        v:List[Float[torch.Tensor, "max_length 1"]] = []
+        q:List[Float[torch.Tensor, "max_length 1"]] = []
+        for s,a in zip(states, actions):
+            v.append(
+                pad(
+                    self.dm_model.get_v(state=s), 
+                    pad=(0,0,0,h - s.shape[0]), 
+                    mode='constant', 
+                    value=0
+                    )
+                )
+            q.append(
+                pad(
+                    self.dm_model.get_q(state=s, action=a), 
+                    pad=(0,0,0,h - s.shape[0]), 
+                    mode='constant', 
+                    value=0
+                    )
+                )
+        v_tens:Float[torch.Tensor, "max_length n_trajectories"] = torch.concat(
+            v,dim=1)
+        q_tens:Float[torch.Tensor, "max_length n_trajectories"] = torch.concat(
+            q,dim=1)
+        check_array_shape(v_tens,[h,n_traj])
+        check_array_shape(q_tens,[h,n_traj]) 
+        v_tens = torch.transpose(v_tens,0,1)
+        q_tens = torch.transpose(q_tens,0,1)
+        _t1 = torch.mul(discnt_rewards,weights)
+        _t2 = torch.mul(q_tens,weights)
+        prev_weights = torch.roll(weights,1)
+        prev_weights[:,0] = torch.ones(weights.shape[0])
+        _t3 = torch.mul(v_tens,prev_weights)
+        discnt_vals:Float[
+            torch.Tensor, "n_trajectories n_trajectories"
+            ] = self.get_discnt_vals(
+            discount=discount,
+            traj_length=h
+            )
+        discnt_vals = torch.transpose(
+            discnt_vals[:,None].repeat((1,n_traj)),
+            0, 1
+            )
+        _t4 = torch.mul((_t2-_t3),discnt_vals)
+        res = (_t1-_t4).sum(dim=1)/n_traj
+        return res
+        
+    
+class DR(DREstimator):
+    
+    def __init__(
+        self, 
+        dm_model: DirectMethodBase, 
+        clip_weights: bool = False, 
+        clip: float = 0.0, 
+        cache_traj_rewards: bool = False, 
+        norm_kwargs: Dict[str, Any] = {}
+        ) -> None:
+        assert "avg_denom" not in norm_kwargs.keys(), "avg_denom is already set"
+        super().__init__(
+            dm_model=dm_model, 
+            norm_weights=False, 
+            clip_weights=clip_weights, 
+            clip=clip, 
+            cache_traj_rewards=cache_traj_rewards, 
+            norm_kwargs={"avg_denom": False, **norm_kwargs}
+            )
+        
+class WDR(DREstimator):
+    
+    def __init__(
+        self, 
+        dm_model: DirectMethodBase,  
+        clip_weights: bool = False, 
+        clip: float = 0.0, 
+        cache_traj_rewards: bool = False, 
+        norm_kwargs: Dict[str, Any] = {}
+        ) -> None:
+        assert "avg_denom" not in norm_kwargs.keys(), "avg_denom is already set"
+        super().__init__(
+            dm_model=dm_model, 
+            norm_weights=True, 
+            clip_weights=clip_weights, 
+            clip=clip, 
+            cache_traj_rewards=cache_traj_rewards, 
+            norm_kwargs={"avg_denom": False, **norm_kwargs}
+            )

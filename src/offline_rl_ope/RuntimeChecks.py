@@ -14,6 +14,6 @@ def check_array_shape(
     array_type:ArrayType, 
     arr_shape:List[int]
     )->None:
-    test_val = array_type.shape
+    test_val = list(array_type.shape)
     _msg = f"Expected array dimension: {arr_shape}. Found: {test_val}"
     assert test_val == arr_shape, _msg

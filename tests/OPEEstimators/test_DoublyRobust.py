@@ -1,170 +1,352 @@
 import unittest
 from unittest.mock import MagicMock
 import torch
+from typing import List, Literal
 import numpy as np
-from offline_rl_ope.OPEEstimators.DoublyRobust import DREstimator 
+from offline_rl_ope.OPEEstimators.DoublyRobust import DR, WDR 
 from offline_rl_ope.OPEEstimators.DirectMethod import DirectMethodBase
-from offline_rl_ope.RuntimeChecks import check_array_dim
 from parameterized import parameterized
 from ..base import test_configs_fmt
-
 
 gamma = 0.99
 
 dm_model = MagicMock(spec=DirectMethodBase)
 
-class DREstimatorTest(unittest.TestCase):
+# def recursive_dr(
+#     rewards:List[torch.Tensor], 
+#     states:List[torch.Tensor], 
+#     actions:List[torch.Tensor], 
+#     weights:List[torch.Tensor],
+#     is_msk:torch.Tensor, 
+#     sa_lst:List[List[float]], 
+#     s_lst:List[List[float]]
+#     )->List[torch.Tensor]:
+#     traj_values = []
+#     for idx, (r,s,a,w,msk,qs,vs) in enumerate(zip(
+#         rewards, 
+#         states, 
+#         actions, 
+#         weights, 
+#         is_msk,
+#         sa_lst, 
+#         s_lst
+#         )):
+#         qs = torch.tensor(qs)
+#         vs = torch.tensor(vs)
+#         p = w.prod()
+#         v_dr = torch.tensor([0.0])
+#         for idx in range(r.shape[0]):
+#             discnt = torch.pow(torch.tensor(gamma),idx)
+#             v_dr = vs[idx] + p*(r[idx]+discnt*v_dr-qs[idx])
+#         traj_values.append(v_dr)
+#     return traj_values
+
+def dr(
+    rewards:List[torch.Tensor], 
+    states:List[torch.Tensor], 
+    actions:List[torch.Tensor], 
+    weights:List[torch.Tensor],
+    is_msk:torch.Tensor, 
+    sa_lst:List[List[float]], 
+    s_lst:List[List[float]],
+    is_type:Literal["is","wis","pd","wpd"]
+    )->List[torch.Tensor]:
+    traj_values = []
+    weight_vals = []
+    if is_type == "is":
+        for w in weights:
+            h = w.shape[0]
+            weight_vals.append(w.prod(0,keepdim=True).repeat((h)))
+    elif is_type == "wis":
+        denom = []
+        for w in weights:
+            h = w.shape[0]
+            weights = w.prod(0,keepdim=True)
+            denom.append(weights)
+            weight_vals.append(weights.repeat((h)))
+        denom = torch.concat(denom).sum()
+        weight_vals = [w/denom for w in weight_vals]
+    elif is_type == "pd":
+        for w in weights:
+            h = w.shape[0]
+            weight_vals.append(w.cumprod(0))
+    elif is_type == "wpd":
+        denom = []
+        for w in weights:
+            h = w.shape[0]
+            weights = w.cumprod(0)
+            denom.append(torch.sum(weights,0,keepdim=True))
+            weight_vals.append(weights)
+        denom = torch.concat(denom).sum()
+        weight_vals = [w/denom for w in weight_vals]
+        print(weight_vals)
+    else:
+        raise ValueError
+    for idx, (r,s,a,w,msk,qs,vs) in enumerate(zip(
+        rewards, 
+        states, 
+        actions, 
+        weight_vals, 
+        is_msk,
+        sa_lst, 
+        s_lst
+        )):
+        qs = torch.tensor(qs).squeeze()
+        vs = torch.tensor(vs).squeeze()
+        r = r.squeeze()
+        msk = msk.squeeze()
+        w = w.squeeze()
+        h = int(msk.sum().item())
+        discnt = torch.tensor(gamma).repeat(h)
+        discnt_pow = torch.arange(0,h)
+        discnt = torch.pow(discnt,discnt_pow)
+        _t1 = torch.mul(torch.mul(discnt,r),w)
+        _t2 = torch.mul(w,qs)
+        prev_weights = torch.roll(w,1)
+        prev_weights[0] = torch.tensor([1])
+        _t3 = torch.mul(prev_weights,vs)
+        _t4 = torch.mul(discnt, _t2-_t3)
+        traj_val = (_t1-_t4).sum()
+        traj_values.append(traj_val)
+    return traj_values
+
+
+class DREstimatorTest(unittest.TestCase):    
     
     @parameterized.expand(test_configs_fmt)
-    def test_update_step_ignore(self, name, test_conf):
-        
-        # is_est = DREstimator(dm_model=MockDMModel(), norm_weights=False, 
-        #                     clip=None, ignore_nan=True)
-        is_est = DREstimator(dm_model=dm_model, norm_weights=False, 
-                                clip=0.0, ignore_nan=True)
-        v_dr_t = torch.tensor([0.0])
-        v_t = torch.tensor(test_conf.test_dm_s_values[0][-1])
-        p_t = test_conf.weight_test_res[0,-1].reshape(-1)
-        r_t = torch.tensor(test_conf.test_reward_values[0][-1]).float()
-        q_t = torch.tensor(test_conf.test_dm_sa_values[0][-1])
-        assert len(v_dr_t.shape) == 1, "Test input dim not correct"
-        assert len(v_t.shape) == 1, "Test input dim not correct"
-        assert len(p_t.shape) == 1, "Test input dim not correct"
-        assert len(r_t.shape) == 1, "Test input dim not correct"
-        assert len(q_t.shape) == 1, "Test input dim not correct"
-        pred_res:torch.Tensor = is_est._DREstimator__update_step(
-            v_t, p_t, r_t, v_dr_t, torch.tensor([gamma]), q_t
-            )
-        test_res:torch.Tensor = v_t + p_t*(r_t+torch.tensor(gamma)*v_dr_t-q_t)
-        tol = test_res/1000
-        np.testing.assert_allclose(pred_res.numpy(), test_res.numpy(), 
-                                atol=tol.numpy().item())
-    
-    @parameterized.expand(test_configs_fmt)
-    def test_get_traj_discnt_reward(self, name, test_conf):
-        # dm_model = MockDMModel()
-        def q_side_effect(state:torch.Tensor, action:torch.Tensor):
-            lkp = {
-                "_".join([str(torch.Tensor(s)), str(torch.Tensor(a))]): q
-                for s,a,q in zip(test_conf.test_state_vals, test_conf.test_action_vals, 
-                                test_conf.test_dm_sa_values)
-            }
-            res = lkp["_".join([str(state), str(action)])]
-            return torch.Tensor(res)
-        def v_side_effect(state:torch.Tensor):
-            lkp = {
-                str(torch.Tensor(s)): v 
-                for s,v in zip(test_conf.test_state_vals, test_conf.test_dm_s_values)
-            }
-            res = lkp[str(state)]
-            return torch.Tensor(res)
-        dm_model.get_q = MagicMock(side_effect=q_side_effect)
-        dm_model.get_v = MagicMock(side_effect=v_side_effect)
-        # dm_model.get_q.return_value = q_side_effect
-        # dm_model.get_v.return_value = v_side_effect
-        is_est = DREstimator(dm_model=dm_model, norm_weights=False, clip=0.0, 
-                            ignore_nan=True)
-        pred_res = []
-        test_res = []
-        for idx, traj in enumerate(zip(
-            test_conf.test_state_vals, test_conf.weight_test_res, test_conf.test_reward_values, 
-            test_conf.test_action_vals, test_conf.test_dm_sa_values, 
-            test_conf.test_dm_s_values, test_conf.msk_test_res
-            )):
-            s_t = torch.Tensor(traj[0])
-            p_t = torch.masked_select(traj[1], traj[6]>0).reshape(-1,1)
-            r_t = torch.Tensor(traj[2]).float()
-            a_t = torch.Tensor(traj[3])
-            q_t = torch.Tensor(traj[4])
-            v_t = torch.Tensor(traj[5])
-            assert len(s_t.shape) == 2, "Test input dim not correct"
-            assert len(p_t.shape) == 2, "Test input dim not correct"
-            assert len(r_t.shape) == 2, "Test input dim not correct"
-            assert len(a_t.shape) == 2, "Test input dim not correct"
-            assert len(q_t.shape) == 2, "Test input dim not correct"
-            assert len(v_t.shape) == 2, "Test input dim not correct"
-            __pred_res = is_est.get_traj_discnt_reward(
-                reward_array=r_t, discount=gamma, 
-                state_array=s_t, action_array=a_t, weight_array=p_t)
-            pred_res.append(__pred_res.numpy())
-            __test_res_v = torch.tensor([0.0])
-            assert len(__test_res_v.shape) == 1, "Test input dim not correct"
-            for i in np.arange(s_t.shape[0]-1, 0-1, -1):
-                _v_t_i = v_t[i]
-                _q_t_i = q_t[i]
-                _p_t_i = p_t[i]
-                _r_t_i = r_t[i]
-                _gamma = torch.tensor([gamma])
-                assert len(_v_t_i.shape) == 1, "Test input dim not correct"
-                assert len(_p_t_i.shape) == 1, "Test input dim not correct"
-                assert len(_r_t_i.shape) == 1, "Test input dim not correct"
-                assert len(_q_t_i.shape) == 1, "Test input dim not correct"
-                assert len(_gamma.shape) == 1, "Test input dim not correct"
-                __test_res_v = is_est._DREstimator__update_step(
-                    v_t=v_t[i], q_t=q_t[i], p_t=p_t[i], r_t=r_t[i], 
-                    gamma=_gamma, v_dr_t=__test_res_v)
-            test_res.append(__test_res_v.numpy())
-        pred_res = np.concatenate(pred_res)
-        test_res = np.concatenate(test_res)
-        tol = (test_res.mean()/1000).item()
-        np.testing.assert_allclose(pred_res, test_res, atol=tol)
-    
-    @parameterized.expand(test_configs_fmt)
-    def test_predict_traj_rewards(self, name, test_conf):
-        #dm_model = MockDMModel()
-        def q_side_effect(state:torch.Tensor, action:torch.Tensor):
-            lkp = {
-                "_".join([str(torch.Tensor(s)), str(torch.Tensor(a))]): q
-                for s,a,q in zip(test_conf.test_state_vals, test_conf.test_action_vals, 
-                                test_conf.test_dm_sa_values)
-            }
-            res = lkp["_".join([str(state), str(action)])]
-            return torch.Tensor(res)
-        def v_side_effect(state:torch.Tensor):
-            lkp = {
-                str(torch.Tensor(s)): v 
-                for s,v in zip(test_conf.test_state_vals, test_conf.test_dm_s_values)
-            }
-            res = lkp[str(state)]
-            return torch.Tensor(res)
-        dm_model.get_q = MagicMock(side_effect=q_side_effect)
-        dm_model.get_v = MagicMock(side_effect=v_side_effect)
-        # dm_model.get_q.return_value = q_side_effect
-        # dm_model.get_v.return_value = v_side_effect
-        is_est = DREstimator(dm_model=dm_model, norm_weights=False, clip=0.0, 
-                            ignore_nan=True)
-        rewards = [
-            torch.Tensor(x).float() for x in test_conf.test_reward_values
-            ]
-        states = [torch.Tensor(x) for x in test_conf.test_state_vals]
-        actions = [torch.Tensor(x) for x in test_conf.test_action_vals]
-        test_res = []
-        pred_res = is_est.predict_traj_rewards(
-            rewards=rewards, states=states, actions=actions, 
-            weights=test_conf.weight_test_res, discount=gamma, 
-            is_msk=test_conf.msk_test_res
-            )
-        #weight_test_res = weight_test_res/weight_test_res.shape[0]
-        denom = test_conf.weight_test_res.shape[0]
-        for idx, (r,s,a,w,msk) in enumerate(zip(
-            rewards, states, actions, test_conf.weight_test_res, test_conf.msk_test_res
-            )):
-            w = w/denom
-            p = torch.masked_select(w, msk>0).reshape(-1,1)
-            assert len(r.shape) == 2, "Test input dim not correct"
-            assert len(s.shape) == 2, "Test input dim not correct"
-            assert len(a.shape) == 2, "Test input dim not correct"
-            assert len(p.shape) == 2, "Test input dim not correct"
-            assert isinstance(gamma, float), "Test input dim not correct"
-            __test_res = is_est.get_traj_discnt_reward(
-                reward_array=r, discount=gamma, state_array=s, 
-                action_array=a, 
-                weight_array=p)
-            test_res.append(__test_res.numpy())
-        #test_res = np.concatenate(test_res).mean()
-        test_res = np.concatenate(test_res)
-        tol = (np.abs(test_res.mean()/100)).item()
-        self.assertEqual(pred_res.shape, torch.Size((len(rewards),)))
-        np.testing.assert_allclose(pred_res.numpy(),test_res, atol=tol)    
+    def test_predict_is(self, name, test_conf):
+        traj_values = []
+        rewards = [torch.tensor(v).float() for v in test_conf.test_reward_values]
+        weights = [torch.tensor(v).float() for v in test_conf.test_act_indiv_weights]
+        states = [torch.tensor(v).float() for v in test_conf.test_state_vals]
+        actions = [torch.tensor(v).float() for v in test_conf.test_action_vals]
+        max_h = max([len(w) for w in weights])
+        is_msk = torch.concat([
+            torch.concat(
+                [torch.ones(x.shape[0]),torch.zeros(max_h-x.shape[0])]
+                )[None,:] 
+            for x in weights
+            ], axis=0)
+        traj_values = dr(
+            rewards=rewards, states=states, actions=actions, weights=weights,
+            is_msk=is_msk, s_lst=test_conf.test_dm_s_values,
+            sa_lst=test_conf.test_dm_sa_values, is_type="is"
+        )
+        test_res = torch.concat(
+            [v[None] for v in traj_values]).sum()/len(traj_values)
             
-    
+        def q_side_effect(state:torch.Tensor, action:torch.Tensor):
+            lkp = {
+                "_".join([str(torch.Tensor(s)), str(torch.Tensor(a))]): q
+                for s,a,q in zip(test_conf.test_state_vals, test_conf.test_action_vals, 
+                                test_conf.test_dm_sa_values)
+            }
+            res = lkp["_".join([str(state), str(action)])]
+            return torch.Tensor(res)
+        def v_side_effect(state:torch.Tensor):
+            lkp = {
+                str(torch.Tensor(s)): v 
+                for s,v in zip(test_conf.test_state_vals, test_conf.test_dm_s_values)
+            }
+            res = lkp[str(state)]
+            return torch.Tensor(res)
+        dm_model.get_q = MagicMock(side_effect=q_side_effect)
+        dm_model.get_v = MagicMock(side_effect=v_side_effect)
+        
+        
+        weight_tens = torch.concat([
+            torch.concat([x, torch.ones(max_h-x.shape[0])])[None,:] for x in 
+            weights
+        ], axis=0)
+        weight_tens = weight_tens.prod(1,keepdim=True).repeat(
+            (1,is_msk.shape[1]))
+        
+        is_est = DR(
+            dm_model=dm_model, 
+            clip=0.0
+            )
+        pred_res = is_est.predict(
+            rewards=rewards, states=states, actions=actions, 
+            weights=weight_tens, discount=gamma, is_msk=is_msk
+        )
+        tol = (np.abs(test_res/100)).item()
+        np.testing.assert_allclose(pred_res.numpy(),test_res.numpy(), atol=tol)
+        
+    @parameterized.expand(test_configs_fmt)
+    def test_predict_wis(self, name, test_conf):
+        traj_values = []
+        rewards = [torch.tensor(v).float() for v in test_conf.test_reward_values]
+        weights = [torch.tensor(v).float() for v in test_conf.test_act_indiv_weights]
+        states = [torch.tensor(v).float() for v in test_conf.test_state_vals]
+        actions = [torch.tensor(v).float() for v in test_conf.test_action_vals]
+        max_h = max([len(w) for w in weights])
+        is_msk = torch.concat([
+            torch.concat(
+                [torch.ones(x.shape[0]),torch.zeros(max_h-x.shape[0])]
+                )[None,:] 
+            for x in weights
+            ], axis=0)
+        traj_values = dr(
+            rewards=rewards, states=states, actions=actions, weights=weights,
+            is_msk=is_msk, s_lst=test_conf.test_dm_s_values,
+            sa_lst=test_conf.test_dm_sa_values, is_type="wis"
+        )
+        test_res = torch.concat(
+            [v[None] for v in traj_values]).sum()/len(traj_values)
+            
+        def q_side_effect(state:torch.Tensor, action:torch.Tensor):
+            lkp = {
+                "_".join([str(torch.Tensor(s)), str(torch.Tensor(a))]): q
+                for s,a,q in zip(test_conf.test_state_vals, 
+                                 test_conf.test_action_vals, 
+                                test_conf.test_dm_sa_values)
+            }
+            res = lkp["_".join([str(state), str(action)])]
+            return torch.Tensor(res)
+        def v_side_effect(state:torch.Tensor):
+            lkp = {
+                str(torch.Tensor(s)): v 
+                for s,v in zip(test_conf.test_state_vals, test_conf.test_dm_s_values)
+            }
+            res = lkp[str(state)]
+            return torch.Tensor(res)
+        dm_model.get_q = MagicMock(side_effect=q_side_effect)
+        dm_model.get_v = MagicMock(side_effect=v_side_effect)
+        
+        
+        weight_tens = torch.concat([
+            torch.concat([x, torch.ones(max_h-x.shape[0])])[None,:] for x in 
+            weights
+        ], axis=0)
+        weight_tens = weight_tens.prod(1,keepdim=True).repeat(
+            (1,is_msk.shape[1]))
+        
+        is_est = WDR(
+            dm_model=dm_model, 
+            clip=0.0
+            )
+        pred_res = is_est.predict(
+            rewards=rewards, states=states, actions=actions, 
+            weights=weight_tens, discount=gamma, is_msk=is_msk
+        )
+        tol = (np.abs(test_res/100)).item()
+        np.testing.assert_allclose(pred_res.numpy(),test_res.numpy(), atol=tol)
+        
+        
+    @parameterized.expand(test_configs_fmt)
+    def test_predict_pd(self, name, test_conf):
+        traj_values = []
+        rewards = [torch.tensor(v).float() for v in test_conf.test_reward_values]
+        weights = [torch.tensor(v).float() for v in test_conf.test_act_indiv_weights]
+        states = [torch.tensor(v).float() for v in test_conf.test_state_vals]
+        actions = [torch.tensor(v).float() for v in test_conf.test_action_vals]
+        max_h = max([len(w) for w in weights])
+        is_msk = torch.concat([
+            torch.concat(
+                [torch.ones(x.shape[0]),torch.zeros(max_h-x.shape[0])]
+                )[None,:] 
+            for x in weights
+            ], axis=0)
+        traj_values = dr(
+            rewards=rewards, states=states, actions=actions, weights=weights,
+            is_msk=is_msk, s_lst=test_conf.test_dm_s_values,
+            sa_lst=test_conf.test_dm_sa_values, is_type="pd"
+        )
+        test_res = torch.concat(
+            [v[None] for v in traj_values]).sum()/len(traj_values)
+            
+        def q_side_effect(state:torch.Tensor, action:torch.Tensor):
+            lkp = {
+                "_".join([str(torch.Tensor(s)), str(torch.Tensor(a))]): q
+                for s,a,q in zip(test_conf.test_state_vals, test_conf.test_action_vals, 
+                                test_conf.test_dm_sa_values)
+            }
+            res = lkp["_".join([str(state), str(action)])]
+            return torch.Tensor(res)
+        def v_side_effect(state:torch.Tensor):
+            lkp = {
+                str(torch.Tensor(s)): v 
+                for s,v in zip(test_conf.test_state_vals, test_conf.test_dm_s_values)
+            }
+            res = lkp[str(state)]
+            return torch.Tensor(res)
+        dm_model.get_q = MagicMock(side_effect=q_side_effect)
+        dm_model.get_v = MagicMock(side_effect=v_side_effect)
+        
+        
+        weight_tens = torch.concat([
+            torch.concat([x, torch.ones(max_h-x.shape[0])])[None,:] for x in 
+            weights
+        ], axis=0)
+        weight_tens = weight_tens.cumprod(1)
+        
+        is_est = DR(
+            dm_model=dm_model, 
+            clip=0.0
+            )
+        pred_res = is_est.predict(
+            rewards=rewards, states=states, actions=actions, 
+            weights=weight_tens, discount=gamma, is_msk=is_msk
+        )
+        tol = (np.abs(test_res/100)).item()
+        np.testing.assert_allclose(pred_res.numpy(),test_res.numpy(), atol=tol)
+
+    @parameterized.expand(test_configs_fmt)
+    def test_predict_wpd(self, name, test_conf):
+        traj_values = []
+        rewards = [torch.tensor(v).float() for v in test_conf.test_reward_values]
+        weights = [torch.tensor(v).float() for v in test_conf.test_act_indiv_weights]
+        states = [torch.tensor(v).float() for v in test_conf.test_state_vals]
+        actions = [torch.tensor(v).float() for v in test_conf.test_action_vals]
+        max_h = max([len(w) for w in weights])
+        is_msk = torch.concat([
+            torch.concat(
+                [torch.ones(x.shape[0]),torch.zeros(max_h-x.shape[0])]
+                )[None,:] 
+            for x in weights
+            ], axis=0)
+        traj_values = dr(
+            rewards=rewards, states=states, actions=actions, weights=weights,
+            is_msk=is_msk, s_lst=test_conf.test_dm_s_values,
+            sa_lst=test_conf.test_dm_sa_values, is_type="wpd"
+        )
+        test_res = torch.concat(
+            [v[None] for v in traj_values]).sum()/len(traj_values)
+            
+        def q_side_effect(state:torch.Tensor, action:torch.Tensor):
+            lkp = {
+                "_".join([str(torch.Tensor(s)), str(torch.Tensor(a))]): q
+                for s,a,q in zip(test_conf.test_state_vals, 
+                                 test_conf.test_action_vals, 
+                                test_conf.test_dm_sa_values)
+            }
+            res = lkp["_".join([str(state), str(action)])]
+            return torch.Tensor(res)
+        def v_side_effect(state:torch.Tensor):
+            lkp = {
+                str(torch.Tensor(s)): v 
+                for s,v in zip(test_conf.test_state_vals, test_conf.test_dm_s_values)
+            }
+            res = lkp[str(state)]
+            return torch.Tensor(res)
+        dm_model.get_q = MagicMock(side_effect=q_side_effect)
+        dm_model.get_v = MagicMock(side_effect=v_side_effect)
+        
+        
+        weight_tens = torch.concat([
+            torch.concat([x, torch.ones(max_h-x.shape[0])])[None,:] for x in 
+            weights
+        ], axis=0)
+        weight_tens = weight_tens.cumprod(1)
+        
+        is_est = WDR(
+            dm_model=dm_model, 
+            clip=0.0,
+            norm_kwargs={"cumulative":True}
+            )
+        pred_res = is_est.predict(
+            rewards=rewards, states=states, actions=actions, 
+            weights=weight_tens, discount=gamma, is_msk=is_msk
+        )
+        tol = (np.abs(test_res/100)).item()
+        np.testing.assert_allclose(pred_res.numpy(),test_res.numpy(), atol=tol)

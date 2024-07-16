@@ -65,22 +65,7 @@ class ISEstimatorBase(OPEEstimatorBase):
             traj_is_weights=weights, clip=self.clip)
         weights = self.norm_weights(traj_is_weights=weights, is_msk=is_msk)
         return weights
-        
-
-class ISEstimator(ISEstimatorBase):
     
-    def __init__(
-        self, 
-        norm_weights: bool, 
-        clip_weights:bool=False, 
-        clip: float = 0.0, 
-        cache_traj_rewards:bool=False, 
-        norm_kwargs:Dict[str,Union[str,bool]] = {}
-        ) -> None:
-        super().__init__(norm_weights=norm_weights, clip_weights=clip_weights, 
-                         clip=clip, cache_traj_rewards=cache_traj_rewards, 
-                         norm_kwargs=norm_kwargs)
-
     def get_dataset_discnt_reward(
         self, 
         rewards:List[torch.Tensor],
@@ -110,6 +95,17 @@ class ISEstimator(ISEstimatorBase):
         return reward_res
 
     @jaxtyped(typechecker=typechecker)
+    def get_discnt_vals(
+        self, 
+        discount:float,
+        traj_length:int
+        ):
+        discnt_tens = torch.Tensor([discount]*traj_length)
+        discnt_pows = torch.arange(0, traj_length)
+        discnt_vals = torch.pow(discnt_tens, discnt_pows)
+        return discnt_vals
+    
+    @jaxtyped(typechecker=typechecker)
     def get_traj_discnt_reward(
         self, 
         reward_array:RewardTensor,
@@ -128,13 +124,28 @@ class ISEstimator(ISEstimatorBase):
         """
         #assert reward_array.shape[1] == 1
         #assert isinstance(reward_array,torch.Tensor)
-        assert isinstance(discount,float)
-        discnt_tens = torch.Tensor([discount]*reward_array.shape[0])
-        discnt_pows = torch.arange(0, len(reward_array))
-        discnt_vals = torch.pow(discnt_tens, discnt_pows)
+        discnt_vals = self.get_discnt_vals(
+            discount=discount, traj_length=reward_array.shape[0]
+        )
         reward_array = reward_array.squeeze()
         discnt_reward = reward_array*discnt_vals
         return discnt_reward
+
+        
+
+class ISEstimator(ISEstimatorBase):
+    
+    def __init__(
+        self, 
+        norm_weights: bool, 
+        clip_weights:bool=False, 
+        clip: float = 0.0, 
+        cache_traj_rewards:bool=False, 
+        norm_kwargs:Dict[str,Union[str,bool]] = {}
+        ) -> None:
+        super().__init__(norm_weights=norm_weights, clip_weights=clip_weights, 
+                         clip=clip, cache_traj_rewards=cache_traj_rewards, 
+                         norm_kwargs=norm_kwargs)
     
     @jaxtyped(typechecker=typechecker)
     def predict_traj_rewards(
@@ -184,5 +195,4 @@ class ISEstimator(ISEstimatorBase):
         # (n_trajectories,max_length) ELEMENT WISE * (n_trajectories,max_length)
         res = torch.mul(discnt_rewards,weights).sum(dim=1)
         return res
-    
     

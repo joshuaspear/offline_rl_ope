@@ -229,7 +229,7 @@ class PerDecisionIS(ImportanceSampler):
         __orig_dim = is_weights.shape
         is_weights = torch.cumprod(is_weights, dim=1)
         is_weights = is_weights*weight_msk
-        check_array_shape(is_weights, __orig_dim)
+        check_array_shape(is_weights, list(__orig_dim))
         return is_weights
 
 

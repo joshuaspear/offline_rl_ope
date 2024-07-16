@@ -8,8 +8,6 @@ from ..base import test_configs_fmt
 
 
 gamma = 0.99
-test_conf = test_configs_fmt[0][1]
-
 
 class ISEstimatorTest(unittest.TestCase):
     

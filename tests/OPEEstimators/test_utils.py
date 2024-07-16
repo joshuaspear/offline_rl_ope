@@ -62,6 +62,29 @@ class UtilsTestVanillaIS(unittest.TestCase):
         self.assertEqual(pred_res.shape,self.test_conf.traj_is_weights_is.shape)
         np.testing.assert_allclose(pred_res.numpy(), test_res.numpy(), 
                                 atol=toll.numpy())
+
+    def test_norm_weights_vanilla_no_avg(self):
+        """Vanilla IS with non-bias averaging:
+        $w_{H,i}=\prod_{t=0}^{H}w_{t,i}$
+        
+        $\frac{1}/{n}\sum_{i=1}^{n}\sum_{t=0}^{H}r_{t}\gamma^{t}w_{H,i}$
+        
+        => The output should be of the form:
+        \frac{1}/{n}w_{H,i}
+        """
+        test_res = self.test_conf.traj_is_weights_is
+        toll = test_res.mean()/1000
+        calculator = VanillaNormWeights(avg_denom=False)
+        assert len(self.test_conf.traj_is_weights_is.shape) == 2, "Incorrect test input dimensions"
+        assert len(self.test_conf.msk_test_res.shape) == 2, "Incorrect test input dimensions"
+        pred_res = calculator(
+            traj_is_weights=self.test_conf.traj_is_weights_is, 
+            is_msk=self.test_conf.msk_test_res
+            )
+        self.assertEqual(pred_res.shape,self.test_conf.traj_is_weights_is.shape)
+        np.testing.assert_allclose(pred_res.numpy(), test_res.numpy(), 
+                                atol=toll.numpy())
+
     
     def test_norm_weights_wis(self):
         """Vanilla IS with WIS averaging:
@@ -230,9 +253,8 @@ class UtilsTestVanillaIS(unittest.TestCase):
         term_weights = torch.tensor(term_weights)
         # Sum over the weights as we are not doing cumulative
         denom = term_weights.sum() + smooth_eps
-        denom = (denom/len(term_idx))
         denom_toll = denom.squeeze().mean().numpy()/1000
-        test_res = self.test_conf.traj_is_weights_is_alter/denom
+        test_res = (self.test_conf.traj_is_weights_is_alter/denom)/len(term_idx)
         toll = test_res.mean()/1000
         calculator = WISWeightNorm(smooth_eps=smooth_eps, avg_denom=True)
         norm = calculator.calc_norm(
@@ -266,9 +288,8 @@ class UtilsTestVanillaIS(unittest.TestCase):
         term_weights = torch.tensor(term_weights)
         # Sum over the weights as we are not doing cumulative
         denom = term_weights.sum()
-        denom = (denom/len(term_idx))
         denom_toll = denom.squeeze().mean().numpy()/1000
-        test_res = self.test_conf.traj_is_weights_is_alter/denom
+        test_res = (self.test_conf.traj_is_weights_is_alter/denom)/len(term_idx)
         toll = test_res.mean()/1000
         calculator = WISWeightNorm(avg_denom=True)
         norm = calculator.calc_norm(
@@ -314,6 +335,27 @@ class UtilsTestPD(unittest.TestCase):
         self.assertEqual(pred_res.shape,self.test_conf.traj_is_weights_pd.shape)
         np.testing.assert_allclose(pred_res.numpy(), test_res.numpy(), 
                                 atol=toll.numpy())
+        
+    def test_norm_weights_vanilla_no_avg(self):
+        """PD with non-bias averaging:
+        $\frac{1}/{n}\sum_{i=1}^{n}\sum_{t=0}^{H}r_{t}\gamma^{t}\prod_{t=0}^{t'}w_{t,i}$
+        
+        => The output should be of the form:
+        $\frac{1}/{n}\prod_{t=0}^{t'}w_{t,i}$
+        """
+        test_res = self.test_conf.traj_is_weights_pd
+        toll = test_res.mean()/1000
+        calculator = VanillaNormWeights(avg_denom=False)
+        assert len(self.test_conf.traj_is_weights_pd.shape) == 2, "Incorrect test input dimensions"
+        assert len(self.test_conf.msk_test_res.shape) == 2, "Incorrect test input dimensions"
+        pred_res = calculator(
+            traj_is_weights=self.test_conf.traj_is_weights_pd, 
+            is_msk=self.test_conf.msk_test_res
+            )
+        self.assertEqual(pred_res.shape,self.test_conf.traj_is_weights_pd.shape)
+        np.testing.assert_allclose(pred_res.numpy(), test_res.numpy(), 
+                                atol=toll.numpy())
+
     
     def test_norm_weights_wpd(self):
         """WPD:
@@ -473,9 +515,8 @@ class UtilsTestPD(unittest.TestCase):
         term_weights = torch.tensor(term_weights)
         # Sum over the weights as we are not doing cumulative
         denom = term_weights.sum() + smooth_eps
-        denom = (denom/len(term_idx))
         denom_toll = denom.squeeze().numpy()/1000
-        test_res = self.test_conf.traj_is_weights_pd_alter/denom
+        test_res = (self.test_conf.traj_is_weights_pd_alter/denom)/len(term_idx)
         toll = test_res.mean()/1000
         calculator = WISWeightNorm(smooth_eps=smooth_eps, avg_denom=True)
         norm = calculator.calc_norm(
@@ -509,9 +550,8 @@ class UtilsTestPD(unittest.TestCase):
         term_weights = torch.tensor(term_weights)
         # Sum over the weights as we are not doing cumulative
         denom = term_weights.sum()
-        denom = (denom/len(term_idx))
         denom_toll = denom.squeeze().numpy()/1000
-        test_res = self.test_conf.traj_is_weights_pd_alter/denom
+        test_res = (self.test_conf.traj_is_weights_pd_alter/denom)/len(term_idx)
         toll = test_res.mean()/1000
         calculator = WISWeightNorm(avg_denom=True)
         norm = calculator.calc_norm(
