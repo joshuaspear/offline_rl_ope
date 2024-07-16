@@ -93,7 +93,6 @@ class DREstimator(ISEstimator):
             rewards=rewards, discount=discount, h=h)
         # weights dim is (n_trajectories, max_length)
         weights = self.process_weights(weights=weights, is_msk=is_msk)
-        print(weights)
         v:List[Float[torch.Tensor, "max_length 1"]] = []
         q:List[Float[torch.Tensor, "max_length 1"]] = []
         for s,a in zip(states, actions):
