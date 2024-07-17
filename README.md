@@ -97,6 +97,7 @@ The different kinds of importance samples can also be visualised by querying the
 * Added explicit stochastic policies for d3rlpy
 * Introduced 'policy_func' which is any function/method which outputs type Union[TorchPolicyReturn, NumpyPolicyReturn]
 * Simplified and unified ISCallback in d3rlpy/api using PolicyFactory
+* Added 'premade' doubly robust estimators for vanilla DR, weighted DR, per-decision DR and weighted per-decision DR 
 
 #### 5.0.1
 * Fixed bug where GreedyDeterministic couldn't handle multi-dimensional action spaces
