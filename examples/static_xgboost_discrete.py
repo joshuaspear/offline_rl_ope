@@ -16,7 +16,7 @@ from offline_rl_ope.components.Policy import (
     GreedyDeterministic, Policy, NumpyPolicyFuncWrapper)
 from offline_rl_ope.components.ImportanceSampler import ISWeightOrchestrator
 from offline_rl_ope.OPEEstimators import (
-    ISEstimator, DREstimator, D3rlpyQlearnDM)
+    ISEstimator, WDR, D3rlpyQlearnDM)
 from offline_rl_ope.PropensityModels.sklearn import (
     SklearnDiscrete)
 from offline_rl_ope.LowerBounds.HCOPE import get_lower_bound
@@ -123,9 +123,9 @@ if __name__ == "__main__":
     wis_estimator_smooth = ISEstimator(norm_weights=True, norm_kwargs={
         "smooth_eps":0.0000001
     })
-    w_dr_estimator = DREstimator(
-        dm_model=fqe_dm_model, norm_weights=True, 
-                                ignore_nan=True)
+    w_dr_estimator = WDR(
+        dm_model=fqe_dm_model
+        )
 
 
     res = is_estimator.predict(
