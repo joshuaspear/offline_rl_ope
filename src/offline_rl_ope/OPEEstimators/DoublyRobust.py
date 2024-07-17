@@ -126,7 +126,7 @@ class DREstimator(ISEstimator):
         prev_weights[:,0] = torch.ones(weights.shape[0])
         _t3 = torch.mul(v_tens,prev_weights)
         discnt_vals:Float[
-            torch.Tensor, "n_trajectories n_trajectories"
+            torch.Tensor, "max_length n_trajectories"
             ] = self.get_discnt_vals(
             discount=discount,
             traj_length=h
