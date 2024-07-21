@@ -22,7 +22,7 @@ class Categorical(PropensityTorchMlpBase):
         
         super().__init__(input_dim=input_dim, layers_dim=layers_dim, 
                          actvton=actvton, init_bias=init_bias)
-        
+        assert all([i>1 for i in out_dim]), "If predicting single positive class. Provide output dim of 2"
         self.layers.append(actvton)
         # Add the final layer
         self.out_layers = nn.ModuleList()
@@ -31,7 +31,7 @@ class Categorical(PropensityTorchMlpBase):
                 in_features=layers_dim[-1],
                 out_features=head_dim
             ))
-        self.out_actvton = nn.Sigmoid()
+        self.out_actvton = nn.Softmax()
         
     def forward(
         self, 
