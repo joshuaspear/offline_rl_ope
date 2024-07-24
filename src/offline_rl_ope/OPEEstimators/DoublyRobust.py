@@ -6,42 +6,34 @@ import math
 from jaxtyping import jaxtyped, Float
 from typeguard import typechecked as typechecker
 
-from ..types import (
-    WeightTensor, 
-    RewardTensor,
-    StateTensor,
-    ActionTensor,
-    SingleTrajSingleStepTensor)
+from .EmpiricalMeanDenom import EmpiricalMeanDenomBase
+from .WeightDenom import WeightDenomBase
+from ..types import WeightTensor
 from .IS import ISEstimator
 from .DirectMethod import DirectMethodBase
 from ..RuntimeChecks import check_array_shape
 
 
 class DREstimator(ISEstimator):
-    """ Doubly robust estimator implemented as per: 
-    https://arxiv.org/pdf/1511.03722.pdf
-    """
     
     def __init__(
-        self, 
+        self,
+        empirical_denom:EmpiricalMeanDenomBase,
+        weight_denom:WeightDenomBase,
         dm_model:DirectMethodBase, 
-        norm_weights: bool,
         clip_weights:bool=False,  
         clip:float=0.0, 
         cache_traj_rewards:bool=False, 
-        norm_kwargs:Dict[str,Any] = {}
         ) -> None:
         assert isinstance(dm_model,DirectMethodBase)
-        assert isinstance(norm_weights,bool)
         assert isinstance(clip,(float,type(None)))
         assert isinstance(cache_traj_rewards,bool)
-        assert isinstance(norm_kwargs,Dict)
         super().__init__(
-            norm_weights=norm_weights,
+            empirical_denom=empirical_denom,
+            weight_denom=weight_denom,
             clip_weights=clip_weights, 
             clip=clip, 
-            cache_traj_rewards=cache_traj_rewards, 
-            norm_kwargs=norm_kwargs
+            cache_traj_rewards=cache_traj_rewards
             )
         self.dm_model = dm_model
             
@@ -93,6 +85,7 @@ class DREstimator(ISEstimator):
             rewards=rewards, discount=discount, h=h)
         # weights dim is (n_trajectories, max_length)
         weights = self.process_weights(weights=weights, is_msk=is_msk)
+        print(f"weights:{weights}")
         v:List[Float[torch.Tensor, "max_length 1"]] = []
         q:List[Float[torch.Tensor, "max_length 1"]] = []
         for s,a in zip(states, actions):
@@ -136,46 +129,5 @@ class DREstimator(ISEstimator):
             0, 1
             )
         _t4 = torch.mul((_t2-_t3),discnt_vals)
-        res = (_t1-_t4).sum(dim=1)/n_traj
+        res = (_t1-_t4).sum(dim=1)
         return res
-        
-    
-class DR(DREstimator):
-    
-    def __init__(
-        self, 
-        dm_model: DirectMethodBase, 
-        clip_weights: bool = False, 
-        clip: float = 0.0, 
-        cache_traj_rewards: bool = False, 
-        norm_kwargs: Dict[str, Any] = {}
-        ) -> None:
-        assert "avg_denom" not in norm_kwargs.keys(), "avg_denom is already set"
-        super().__init__(
-            dm_model=dm_model, 
-            norm_weights=False, 
-            clip_weights=clip_weights, 
-            clip=clip, 
-            cache_traj_rewards=cache_traj_rewards, 
-            norm_kwargs={"avg_denom": False, **norm_kwargs}
-            )
-        
-class WDR(DREstimator):
-    
-    def __init__(
-        self, 
-        dm_model: DirectMethodBase,  
-        clip_weights: bool = False, 
-        clip: float = 0.0, 
-        cache_traj_rewards: bool = False, 
-        norm_kwargs: Dict[str, Any] = {}
-        ) -> None:
-        assert "avg_denom" not in norm_kwargs.keys(), "avg_denom is already set"
-        super().__init__(
-            dm_model=dm_model, 
-            norm_weights=True, 
-            clip_weights=clip_weights, 
-            clip=clip, 
-            cache_traj_rewards=cache_traj_rewards, 
-            norm_kwargs={"avg_denom": False, **norm_kwargs}
-            )

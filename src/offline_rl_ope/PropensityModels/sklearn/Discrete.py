@@ -33,6 +33,8 @@ class SklearnDiscrete(PropensityTrainer):
         self.estimator = estimator
         self.epsilon_pr = epsilon_pr
         self.classes_def = theoretical_action_classes
+        _tst_1 = [len(v) == 2 for v in self.classes_def]
+        #assert _tst_1, "Sklearn API can only handle binary actions"
         self.__fitted_cls:List[np.ndarray] = []
         
     @jaxtyped(typechecker=typechecker)
@@ -163,6 +165,8 @@ class SklearnDiscrete(PropensityTrainer):
         self, 
         val:List[np.ndarray]
         ):
+        _tst_1 = [len(v) == 2 for v in val] 
+        #assert _tst_1, "Sklearn API can only handle binary actions"
         self.__fitted_cls = val
         
     def policy_func(

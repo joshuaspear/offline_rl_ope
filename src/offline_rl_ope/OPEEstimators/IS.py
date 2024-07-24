@@ -3,12 +3,12 @@ from typing import Any, Dict, List, Union
 from jaxtyping import jaxtyped, Float
 from typeguard import typechecked as typechecker
 
-from .. import logger
 from .utils import (
-    WISWeightNorm, VanillaNormWeights, WeightNorm,
     clip_weights_pass as cwp, 
     clip_weights as cw
     )
+from .EmpiricalMeanDenom import EmpiricalMeanDenomBase
+from .WeightDenom import WeightDenomBase
 from .base import OPEEstimatorBase
 from ..types import (RewardTensor,WeightTensor)
 
@@ -17,28 +17,28 @@ class ISEstimatorBase(OPEEstimatorBase):
     
     def __init__(
         self, 
-        norm_weights:bool, 
+        empirical_denom:EmpiricalMeanDenomBase,
+        weight_denom:WeightDenomBase, 
         clip_weights:bool=False, 
         cache_traj_rewards:bool=False,
         clip:float=0.0,
         norm_kwargs:Dict[str,Union[str,bool]] = {}
         ) -> None:
-        super().__init__(cache_traj_rewards)
-        assert isinstance(norm_weights,bool)
+        super().__init__(
+            empirical_denom=empirical_denom,
+            cache_traj_rewards=cache_traj_rewards
+        )
+        assert isinstance(weight_denom,WeightDenomBase)
         assert isinstance(clip_weights,bool)
         assert isinstance(cache_traj_rewards,bool)
         assert isinstance(clip,float)
         assert isinstance(norm_kwargs,Dict)
-        if norm_weights:    
-            _norm_weights = WISWeightNorm(**norm_kwargs)
-        else:
-            _norm_weights = VanillaNormWeights(**norm_kwargs)
-        self.norm_weights:WeightNorm = _norm_weights
         self.clip = clip
         if clip_weights:
             self.clip_weights = cw
         else:
             self.clip_weights = cwp
+        self.weight_denom = weight_denom
             
     @jaxtyped(typechecker=typechecker)
     def process_weights(
@@ -58,12 +58,8 @@ class ISEstimatorBase(OPEEstimatorBase):
             WeightTensor: Tensor of processed weight, of dimension 
             (n_trajectories, max_length)
         """
-        # assert isinstance(weights,torch.Tensor)
-        # assert isinstance(is_msk,torch.Tensor)
-        # assert weights.shape == is_msk.shape
-        weights = self.clip_weights(
-            traj_is_weights=weights, clip=self.clip)
-        weights = self.norm_weights(traj_is_weights=weights, is_msk=is_msk)
+        weights = self.clip_weights(weights=weights, clip=self.clip)
+        weights = self.weight_denom(weights=weights, is_msk=is_msk)
         return weights
     
     def get_dataset_discnt_reward(
@@ -137,15 +133,19 @@ class ISEstimator(ISEstimatorBase):
     
     def __init__(
         self, 
-        norm_weights: bool, 
+        empirical_denom:EmpiricalMeanDenomBase,
+        weight_denom: WeightDenomBase, 
         clip_weights:bool=False, 
         clip: float = 0.0, 
-        cache_traj_rewards:bool=False, 
-        norm_kwargs:Dict[str,Union[str,bool]] = {}
+        cache_traj_rewards:bool=False
         ) -> None:
-        super().__init__(norm_weights=norm_weights, clip_weights=clip_weights, 
-                         clip=clip, cache_traj_rewards=cache_traj_rewards, 
-                         norm_kwargs=norm_kwargs)
+        super().__init__(
+            empirical_denom=empirical_denom,
+            weight_denom=weight_denom,
+            clip_weights=clip_weights,
+            cache_traj_rewards=cache_traj_rewards,
+            clip=clip
+            )
     
     @jaxtyped(typechecker=typechecker)
     def predict_traj_rewards(
@@ -195,4 +195,3 @@ class ISEstimator(ISEstimatorBase):
         # (n_trajectories,max_length) ELEMENT WISE * (n_trajectories,max_length)
         res = torch.mul(discnt_rewards,weights).sum(dim=1)
         return res
-    

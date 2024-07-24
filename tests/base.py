@@ -3,6 +3,31 @@ from typing import Any, List, Dict
 import numpy as np
 import torch
 import copy
+from torch.nn.functional import pad
+
+def get_wpd_denoms(
+    weights:List[torch.Tensor],
+    h:int,
+    is_type:str = "pd"
+    ):
+    if is_type == "pd":
+        weight_pad = [pad(w, (0,h-w.shape[0])).cumprod(0) for w in weights]
+    elif is_type == "is":
+        weight_pad = [pad(w.prod(0,keepdim=True).repeat(w.shape[0]), (0,h-w.shape[0])) for w in weights]
+    else:
+        raise ValueError
+    weight_denoms = []
+    for ws in zip(*weight_pad):
+        ws = [w[None] for w in ws]
+        weight_denoms.append(
+            torch.mean(torch.concat(ws))[None]
+        )
+    weight_denoms = torch.concat(weight_denoms)
+    test_res_w = torch.zeros(len(weights),h)
+    for idx,w in enumerate(weight_pad):
+        test_res_w[idx,:] = weight_denoms
+    return test_res_w
+
 
 @dataclass
 class TestConfig:

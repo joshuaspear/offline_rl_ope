@@ -1,3 +1,3 @@
 from . import (
-    d3rlpy
+    d3rlpy, StandardEstimators
 )

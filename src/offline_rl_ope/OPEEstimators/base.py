@@ -1,15 +1,18 @@
 from abc import ABCMeta, abstractmethod
 import torch
 from typing import List
-from jaxtyping import Float
+from jaxtyping import jaxtyped, Float
+from typeguard import typechecked as typechecker
 
 from ..types import WeightTensor
+from .EmpiricalMeanDenom import EmpiricalMeanDenomBase
 
 class OPEEstimatorBase(metaclass=ABCMeta):
     
     
     def __init__(
         self, 
+        empirical_denom:EmpiricalMeanDenomBase,
         cache_traj_rewards:bool=False
         ) -> None:
         self.traj_rewards_cache:torch.Tensor = torch.Tensor(0)
@@ -17,13 +20,15 @@ class OPEEstimatorBase(metaclass=ABCMeta):
             self.__cache_func = self.__cache
         else:
             self.__cache_func = self.__pass_cache
+        self.empirical_denom = empirical_denom
     
     def __cache(self, traj_rewards):
         self.traj_rewards_cache = traj_rewards
     
     def __pass_cache(self, traj_rewards):
         pass
-    
+
+    @jaxtyped(typechecker=typechecker)
     def predict(
         self, 
         rewards:List[torch.Tensor], 
@@ -46,7 +51,11 @@ class OPEEstimatorBase(metaclass=ABCMeta):
             discount=discount, is_msk=is_msk
             )
         self.__cache_func(traj_rewards)
-        return traj_rewards.sum()
+        denom = self.empirical_denom(
+            weights=weights, 
+            is_msk=is_msk
+        )
+        return traj_rewards.sum()/denom
     
     @abstractmethod
     def predict_traj_rewards(
