@@ -1,4 +1,4 @@
-# offline_rl_ope: Efficient and customisable package for performing offline RL OPE on realworld data in Python
+# offline_rl_ope: Extendable abstractions for realworld off-policy evaluation
 
 > [!WARNING]
 > - All IS methods implemented incorrectly in versions < 6.x
@@ -65,18 +65,14 @@ Basic unit testing has been implemented for all the core functionality of the pa
 * PyPi: https://pypi.org/project/offline-rl-ope/
 * To install from sourse using pip, clone this repository and run ```pip install .``` in the top level of the repo.
 
-### Limitations
-* When using DM methods with the d3rlpy training API, the FQE model is required to be refitted for every epoch. This could be improved by trainin the FQE model once, before training of the offline RL model commences
-
 ### Future work
 * Async/multithread support
 * Additional estimators:
   * DualDICE
   * MAGIC
-  * Extended DR estimator as per equation 12 in https://arxiv.org/pdf/1511.03722.pdf
+  * State importance sampling
 * APIs
   * Add additional apis e.g. for stable baselines
-  * Address limitations with existing DM integration with d3rlpy
 
 
 ### Tips
