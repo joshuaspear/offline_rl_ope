@@ -14,6 +14,9 @@ import pandas as pd
 import shutil
 
 from offline_rl_ope.api.d3rlpy.Policy import PolicyFactory
+from offline_rl_ope.OPEEstimators import (
+    EmpiricalMeanDenom, PassWeightDenom, WeightedEmpiricalMeanDenom
+    )
 
 # Import callbacks
 from offline_rl_ope.api.d3rlpy.Callbacks import (
@@ -115,22 +118,31 @@ if __name__=="__main__":
     scorers = {}
 
     scorers.update({"vanilla_is_loss": ISEstimatorScorer(
-        discount=gamma, cache=is_callback, is_type="vanilla", norm_weights=False)})
+        discount=gamma, cache=is_callback, is_type="vanilla", 
+        empirical_denom=EmpiricalMeanDenom(), weight_denom=PassWeightDenom()
+        )})
 
     scorers.update({"pd_is_loss": ISEstimatorScorer(
         discount=gamma, cache=is_callback, is_type="per_decision", 
-        norm_weights=False)})
+        empirical_denom=EmpiricalMeanDenom(), weight_denom=PassWeightDenom()        
+        )})
 
     scorers.update({"vanilla_wis_loss": ISEstimatorScorer(
-        discount=gamma, cache=is_callback, is_type="vanilla", norm_weights=True)})
+        discount=gamma, cache=is_callback, is_type="vanilla", 
+        empirical_denom=WeightedEmpiricalMeanDenom(), 
+        weight_denom=PassWeightDenom()
+        )})
 
     scorers.update({"vanilla_wis_loss_smooth": ISEstimatorScorer(
-        discount=gamma, cache=is_callback, is_type="vanilla", norm_weights=True, 
-        norm_kwargs={"smooth_eps":0.0000001})})
+        discount=gamma, cache=is_callback, is_type="vanilla", 
+        empirical_denom=WeightedEmpiricalMeanDenom(smooth_eps=0.0000001), 
+        weight_denom=PassWeightDenom(),
+        )})
 
     scorers.update({"pd_wis_loss": ISEstimatorScorer(
         discount=gamma, cache=is_callback, is_type="per_decision", 
-        norm_weights=True)})
+        empirical_denom=EmpiricalMeanDenom(), weight_denom=PassWeightDenom()
+        )})
 
     for act in unique_pol_acts:
         scorers.update(

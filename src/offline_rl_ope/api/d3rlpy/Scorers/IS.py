@@ -6,7 +6,9 @@ from d3rlpy.dataset import EpisodeBase
 from d3rlpy.metrics import EvaluatorProtocol
 from d3rlpy.dataset import ReplayBuffer
 
-from ....OPEEstimators import ISEstimator
+from ....OPEEstimators import (
+    ISEstimator, WeightDenomBase, EmpiricalMeanDenomBase
+    )
 from .base import OPEEstimatorScorerBase
 from ..Callbacks.IS import ISCallback
 
@@ -19,18 +21,24 @@ __all__ = [
 
 class ISEstimatorScorer(OPEEstimatorScorerBase, ISEstimator):
     
-    def __init__(self, discount, cache:ISCallback, is_type:str, 
-                 norm_weights: bool, clip_weights:bool=False,
-                 clip: float = 0.0, norm_kwargs:Dict[str,Any] = {},
-                 episodes:Optional[Sequence[EpisodeBase]] = None
-                 ) -> None:
+    def __init__(
+        self, 
+        discount:float, 
+        cache:ISCallback, 
+        is_type:str, 
+        empirical_denom: WeightDenomBase, 
+        weight_denom: EmpiricalMeanDenomBase,
+        clip_weights:bool=False,
+        clip: float = 0.0, 
+        episodes:Optional[Sequence[EpisodeBase]] = None
+        ) -> None:
         OPEEstimatorScorerBase.__init__(self, cache=cache, episodes=episodes)
         ISEstimator.__init__(
             self, 
-            norm_weights=norm_weights, 
+            empirical_denom=empirical_denom,
+            weight_denom=weight_denom,
             clip_weights=clip_weights,
             clip=clip, 
-            norm_kwargs=norm_kwargs
             )
         self.is_type = is_type
         self.discount = discount

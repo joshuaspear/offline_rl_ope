@@ -16,8 +16,9 @@ from pymlrf.FileSystem import DirectoryHandler
 from offline_rl_ope.Dataset import ISEpisode
 from offline_rl_ope.components.Policy import Policy
 from offline_rl_ope.components.ImportanceSampler import ISWeightOrchestrator
-from offline_rl_ope.OPEEstimators import (
-    ISEstimator, WDR, D3rlpyQlearnDM)
+from offline_rl_ope.OPEEstimators import D3rlpyQlearnDM
+from offline_rl_ope.api.StandardEstimators import (
+    VanillaISPDIS, WIS, WDR)
 from offline_rl_ope.PropensityModels.torch import FullGuassian, TorchRegTrainer 
 from offline_rl_ope.LowerBounds.HCOPE import get_lower_bound
 
@@ -153,13 +154,14 @@ if __name__ == "__main__":
 
     fqe_dm_model = D3rlpyQlearnDM(model=fqe)
 
-    is_estimator = ISEstimator(norm_weights=False, cache_traj_rewards=True)
-    wis_estimator = ISEstimator(norm_weights=True)
-    wis_estimator_smooth = ISEstimator(norm_weights=True, norm_kwargs={
-        "smooth_eps":0.0000001
-    })
+    is_estimator = VanillaISPDIS(cache_traj_rewards=True)
+    wis_estimator = WIS()
+    wis_estimator_smooth = WIS(smooth_eps=0.0000001)
     w_dr_estimator = WDR(
         dm_model=fqe_dm_model
+        )
+    w_dr_estimator_smooth = WDR(
+        dm_model=fqe_dm_model, smooth_eps=0.0000001
         )
 
 
@@ -211,7 +213,16 @@ if __name__ == "__main__":
     print(res)
 
     res = w_dr_estimator.predict(
-        weights=is_weight_calculator["per_decision"].traj_is_weights, 
+        weights=is_weight_calculator["vanilla"].traj_is_weights, 
+        rewards=[ep.reward for ep in episodes], discount=0.99,
+        is_msk=is_weight_calculator.weight_msk, 
+        states=[ep.state for ep in episodes], 
+        actions=[ep.action for ep in episodes],
+    )
+    print(res)
+    
+    res = w_dr_estimator_smooth.predict(
+        weights=is_weight_calculator["vanilla"].traj_is_weights, 
         rewards=[ep.reward for ep in episodes], discount=0.99,
         is_msk=is_weight_calculator.weight_msk, 
         states=[ep.state for ep in episodes], 

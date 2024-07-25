@@ -95,7 +95,6 @@ class PDWIS(ISEstimator):
         smooth_eps:float = 0.0
         ) -> None:
         """_summary_
-        - https://arxiv.org/pdf/1906.03735 (snis when weights are IS)
         - https://arxiv.org/pdf/1906.03735 (snsis when weights are PD)
         Args:
             clip_weights (bool, optional): _description_. Defaults to False.

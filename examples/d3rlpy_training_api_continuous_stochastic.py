@@ -21,6 +21,10 @@ from PropensityTrainingLoop import torch_training_loop, GaussianLossWrapper
 
 from offline_rl_ope.PropensityModels.torch import FullGuassian, TorchRegTrainer 
 from offline_rl_ope.api.d3rlpy.Policy import PolicyFactory
+from offline_rl_ope.OPEEstimators import (
+    EmpiricalMeanDenom, PassWeightDenom, WeightedEmpiricalMeanDenom
+    )
+
 
 # Import callbacks
 from offline_rl_ope.api.d3rlpy.Callbacks import (
@@ -144,22 +148,31 @@ if __name__=="__main__":
     scorers = {}
 
     scorers.update({"vanilla_is_loss": ISEstimatorScorer(
-        discount=gamma, cache=is_callback, is_type="vanilla", norm_weights=False)})
+        discount=gamma, cache=is_callback, is_type="vanilla", 
+        empirical_denom=EmpiricalMeanDenom(), weight_denom=PassWeightDenom()
+        )})
 
     scorers.update({"pd_is_loss": ISEstimatorScorer(
         discount=gamma, cache=is_callback, is_type="per_decision", 
-        norm_weights=False)})
+        empirical_denom=EmpiricalMeanDenom(), weight_denom=PassWeightDenom()        
+        )})
 
     scorers.update({"vanilla_wis_loss": ISEstimatorScorer(
-        discount=gamma, cache=is_callback, is_type="vanilla", norm_weights=True)})
+        discount=gamma, cache=is_callback, is_type="vanilla", 
+        empirical_denom=WeightedEmpiricalMeanDenom(), 
+        weight_denom=PassWeightDenom()
+        )})
 
     scorers.update({"vanilla_wis_loss_smooth": ISEstimatorScorer(
-        discount=gamma, cache=is_callback, is_type="vanilla", norm_weights=True, 
-        norm_kwargs={"smooth_eps":0.0000001})})
+        discount=gamma, cache=is_callback, is_type="vanilla", 
+        empirical_denom=WeightedEmpiricalMeanDenom(smooth_eps=0.0000001), 
+        weight_denom=PassWeightDenom(),
+        )})
 
     scorers.update({"pd_wis_loss": ISEstimatorScorer(
         discount=gamma, cache=is_callback, is_type="per_decision", 
-        norm_weights=True)})
+        empirical_denom=EmpiricalMeanDenom(), weight_denom=PassWeightDenom()
+        )})
         
     for scr in fqe_scorers:
         scorers.update({scr: QueryScorer(cache=fqe_callback, query_key=scr)})
