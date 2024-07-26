@@ -85,6 +85,9 @@ The different kinds of importance samples can also be visualised by querying the
 
 ### Release log
 #### 7.0.0 (Major API release)
+* Altered ISEstimator and OPEEstimatorBase APIs to depend on EmpiricalMeanDenomBase and WeightDenomBase
+  * EmpiricalMeanDenomBase and WeightDenomBase seperatly define functions over the dataset value and weights of the individul trajectory weights, respectively. This allows a far greater number of estimators to be flexibly implemented
+* Added api/StandardEstimators for IS and DR to allow for 'plug-and-play' analysis
 * Altered discrete torch propensity model to use softmax instead of torch. Requires modelling both classes for binary classification however, improves generalisability of code
 
 #### 6.0.0
