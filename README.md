@@ -1,4 +1,4 @@
-# offline_rl_ope: Extendable abstractions for realworld off-policy evaluation
+# offline_rl_ope: Realworld off-policy evaluation
 
 > [!WARNING]
 > - All IS methods implemented incorrectly in versions < 6.x
