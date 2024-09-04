@@ -33,7 +33,8 @@ class FQECallback(QueryCallbackBase):
         model_fit_kwargs:Dict, 
         dataset:MDPDataset, 
         fqe_impl_init:Optional[FQEImplInitArg]=None, 
-        device:DeviceArg = False
+        device:DeviceArg = False,
+        logs_loc:Optional[str] = None
         ) -> None:
         super().__init__(debug=False, debug_path="")
         self.__scorers = scorers
@@ -41,7 +42,10 @@ class FQECallback(QueryCallbackBase):
         self.__fqe_cls = fqe_cls
         self.__model_init_kwargs = model_init_kwargs
         self.__model_fit_kwargs = model_fit_kwargs
-        self.__logs_loc = os.path.join(os.getcwd(), "tmp_fqe_logs_loc")
+        if logs_loc:
+            self.__logs_loc = logs_loc
+        else:
+            self.__logs_loc = os.path.join(os.getcwd(), "tmp_fqe_logs_loc")
         self.__cur_exp = 0
         os.mkdir(self.__logs_loc)
         self.__fqe_impl_init = fqe_impl_init

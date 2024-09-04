@@ -84,6 +84,10 @@ If importance sampling based methods are evaluating to 0, consider visualising t
 The different kinds of importance samples can also be visualised by querying the ```traj_is_weights``` attribute of a given ```ImportanceSampler``` object. If for example, vanilla importance sampling is being used and the samples are not ```NaN``` or ```Inf``` then visualising the ```traj_is_weights``` may provide insight. In particular, IS weights will tend to inifinity when the evaluation policy places large density on an action in comparison to the behaviour policy.
 
 ### Release log
+
+#### 7.0.1
+* Made the logging location for d3rlpy/FQE callback an optional parameter
+
 #### 7.0.0 (Major API release)
 * Altered ISEstimator and OPEEstimatorBase APIs to depend on EmpiricalMeanDenomBase and WeightDenomBase
   * EmpiricalMeanDenomBase and WeightDenomBase seperatly define functions over the dataset value and weights of the individul trajectory weights, respectively. This allows a far greater number of estimators to be flexibly implemented
