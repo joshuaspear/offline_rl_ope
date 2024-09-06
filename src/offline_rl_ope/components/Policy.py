@@ -161,6 +161,7 @@ class Policy(BasePolicy):
         # assert isinstance(action,torch.Tensor)
         # check_array_dim(action,2)
         state = self.preproc_tens(state)
+        action = self.preproc_tens(action)
         p_return = self.policy_func(state, action)
         actions = self.postproc_tens(p_return.actions)
         action_prs = self.postproc_tens(p_return.action_prs)
