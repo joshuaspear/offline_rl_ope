@@ -167,7 +167,7 @@ class Policy(BasePolicy):
         action_prs = self.postproc_tens(p_return.action_prs)
         self.collect_res_fn(action_prs)
         self.collect_act_func(actions)
-        return p_return.action_prs
+        return action_prs
 
 class GreedyDeterministic(BasePolicy):
     
