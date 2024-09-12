@@ -1,4 +1,4 @@
-# offline_rl_ope: Realworld off-policy evaluation
+# offline rl ope: A Python package for off-policy evaluation of offline RL models with realworld data
 
 > [!WARNING]
 > - All IS methods implemented incorrectly in versions < 6.x
@@ -64,6 +64,18 @@ Basic unit testing has been implemented for all the core functionality of the pa
 ### Installation
 * PyPi: https://pypi.org/project/offline-rl-ope/
 * To install from sourse using pip, clone this repository and run ```pip install .``` in the top level of the repo.
+
+### Citation
+When using this package in your work, please cite the following:
+```
+@misc{Spear2024, 
+  author = {Joshua Spear},
+  title = {offline_rl_ope: A Python package for off-policy evaluation of offline RL models with realworld data},
+  year = {2024},
+  month = {9}, 
+  url = {https://github.com/joshuaspear/offline_rl_ope},  
+}
+```
 
 ### Future work
 * Async/multithread support
