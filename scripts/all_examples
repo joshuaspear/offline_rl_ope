@@ -9,13 +9,6 @@ echo "**** Running static_torch_stochastic_continuous ****"
 echo "****************************************************"
 python examples/static_torch_stochastic_continuous.py
 
-
-echo "*******************************************************"
-echo "**** Running static_torch_deterministic_continuous ****"
-echo "*******************************************************"
-python examples/static_torch_deterministic_continuous.py
-
-
 echo "**********************************************"
 echo "**** Running d3rlpy_training_api_discrete ****"
 echo "**********************************************"
