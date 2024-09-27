@@ -99,6 +99,8 @@ The different kinds of importance samples can also be visualised by querying the
 
 #### 7.0.1
 * Made the logging location for d3rlpy/FQE callback an optional parameter
+* D3rlpy API now handles the use of observation and action scalers
+* Altered PVW metric to use the final weight in the trajectory
 
 #### 7.0.0 (Major API release)
 * Altered ISEstimator and OPEEstimatorBase APIs to depend on EmpiricalMeanDenomBase and WeightDenomBase
