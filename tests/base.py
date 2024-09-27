@@ -49,6 +49,7 @@ class TestConfig:
     traj_is_weights_pd_alter:torch.Tensor = None
     msk_test_res:torch.Tensor = None
     reward_test_res:torch.Tensor = None
+    traj_lengths: List[int] = None
     
     @staticmethod
     def __get_traj_weights(
@@ -68,11 +69,13 @@ class TestConfig:
         traj_is_weights_pd[msk_test_res == 0] = 0
         return traj_is_weights_is, traj_is_weights_pd
     
-    @staticmethod
+
     def __get_weight_mask_matrix(
+        self,
         test_act_indiv_weights:List[np.array]
         ):
-        max_len = max([len(i) for i in test_act_indiv_weights])
+        self.traj_lengths = [len(i) for i in test_act_indiv_weights]
+        max_len = max(self.traj_lengths)
         weight_test_res = []
         msk_test_res = []
         for i in test_act_indiv_weights:
