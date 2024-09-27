@@ -1,5 +1,6 @@
 import torch
 from .MetricBase import MetricBase
+from ..OPEEstimators.utils import get_traj_weight_final
 from jaxtyping import jaxtyped
 from typeguard import typechecked as typechecker
 
@@ -25,20 +26,15 @@ class ValidWeightsProp(MetricBase):
         weights:WeightTensor, 
         weight_msk:WeightTensor
         ) -> float:
-        # assert isinstance(weights,torch.Tensor)
-        # assert isinstance(weight_msk,torch.Tensor)
-        # check_array_dim(weights,2)
-        # check_array_dim(weight_msk,2)
-        # assert weights.shape == weight_msk.shape
+        fnl_weights = get_traj_weight_final(
+            weights=weights,
+            is_msk=weight_msk
+            )
         vw_mask = (
-            (weights > self.__min_w) & 
-            (weights < self.__max_w)
-            )
-        vw_num = torch.sum(input=vw_mask, dim=1)
-        vw_denom = torch.sum(
-            input=weight_msk, dim=1
-            )
-        return torch.mean(vw_num/vw_denom).item()
+            (fnl_weights > self.__min_w) & 
+            (fnl_weights < self.__max_w)
+            ).squeeze()
+        return torch.mean(vw_mask.float()).item()
         
     def __call__(
         self, 

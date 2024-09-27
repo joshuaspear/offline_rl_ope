@@ -15,9 +15,13 @@ class TestValidWeightsProp(unittest.TestCase):
     def test_call(self):
         max_val=10000
         min_val=0.000001
-        num = (self.test_conf.weight_test_res > min_val) & (self.test_conf.weight_test_res < max_val)
-        num = torch.sum(num, axis=1)
-        denum = torch.sum(self.test_conf.msk_test_res, axis=1)
+        fnl_weights = []
+        for idx,i in enumerate(self.test_conf.traj_lengths):
+            fnl_weights.append(self.test_conf.weight_test_res[idx,i-1][None])
+        fnl_weights_tens = torch.concat(fnl_weights, axis=0)
+        num = (fnl_weights_tens > min_val) & (fnl_weights_tens < max_val)
+        num = torch.sum(num, axis=0)
+        denum = len(self.test_conf.traj_lengths)
         act_res = torch.mean(num/denum).item()
         metric = ValidWeightsProp(
             max_w=max_val,
