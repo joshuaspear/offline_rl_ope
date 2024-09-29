@@ -1,6 +1,6 @@
 import unittest
 from unittest.mock import MagicMock
-from .algo_test import init_trained_algo, create_observations
+from ...d3rlpy_test_utils import init_trained_algo, create_observations
 import numpy as np
 from numpy.testing import assert_allclose
 from parameterized import parameterized_class

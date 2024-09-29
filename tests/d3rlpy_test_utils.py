@@ -24,7 +24,8 @@ TorchObservation = Union[torch.Tensor, Sequence[torch.Tensor]]
 
 @overload
 def create_observations(
-    observation_shape: Sequence[int], length: int, dtype: DType = np.float32
+    observation_shape: Sequence[int], length: int, dtype: DType = np.float32,
+    seed:int = 1
 ) -> NDArray: ...
 
 
@@ -33,20 +34,25 @@ def create_observations(
     observation_shape: Sequence[Sequence[int]],
     length: int,
     dtype: DType = np.float32,
+    seed:int = 1
 ) -> Sequence[NDArray]: ...
 
 
 def create_observations(
-    observation_shape: Shape, length: int, dtype: DType = np.float32
+    observation_shape: Shape, length: int, dtype: DType = np.float32, 
+    seed:int = 1
 ) -> ObservationSequence:
     observations: ObservationSequence
+    np.random.seed(seed=seed)
     if isinstance(observation_shape[0], (list, tuple)):
         observations = [
             np.random.random((length, *shape)).astype(dtype)
             for shape in cast(Sequence[Sequence[int]], observation_shape)
         ]
     else:
-        observations = np.random.random((length, *observation_shape)).astype(
+        observations = np.random.random(
+            (length, *observation_shape)
+            ).astype(
             dtype
         )
     return observations
