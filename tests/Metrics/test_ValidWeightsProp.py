@@ -17,7 +17,10 @@ class TestValidWeightsProp(unittest.TestCase):
         min_val=0.000001
         fnl_weights = []
         for idx,i in enumerate(self.test_conf.traj_lengths):
-            fnl_weights.append(self.test_conf.weight_test_res[idx,i-1][None])
+            fnl_weights.append(self.test_conf.weight_test_res[idx,:i-1].sum(
+                dim=0,
+                keepdim=True
+                ))
         fnl_weights_tens = torch.concat(fnl_weights, axis=0)
         num = (fnl_weights_tens > min_val) & (fnl_weights_tens < max_val)
         num = torch.sum(num, axis=0)

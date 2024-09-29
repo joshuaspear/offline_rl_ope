@@ -26,13 +26,10 @@ class ValidWeightsProp(MetricBase):
         weights:WeightTensor, 
         weight_msk:WeightTensor
         ) -> float:
-        fnl_weights = get_traj_weight_final(
-            weights=weights,
-            is_msk=weight_msk
-            )
+        sum_weights = torch.mul(weights,weight_msk).sum(dim=1)
         vw_mask = (
-            (fnl_weights > self.__min_w) & 
-            (fnl_weights < self.__max_w)
+            (sum_weights > self.__min_w) & 
+            (sum_weights < self.__max_w)
             ).squeeze()
         return torch.mean(vw_mask.float()).item()
         
