@@ -17,7 +17,7 @@ class TestValidWeightsProp(unittest.TestCase):
         min_val=0.000001
         fnl_weights = []
         for idx,i in enumerate(self.test_conf.traj_lengths):
-            fnl_weights.append(self.test_conf.weight_test_res[idx,:i-1].sum(
+            fnl_weights.append(self.test_conf.weight_test_res[idx,:i].sum(
                 dim=0,
                 keepdim=True
                 ))

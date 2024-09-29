@@ -11,4 +11,4 @@ class MetricBase(metaclass=ABCMeta):
         
     @abstractmethod
     def __call__(self, weights:torch.Tensor, *args:Any, **kwargs:Any) -> float:
-        return self.__ess(weights=weights)
+        pass

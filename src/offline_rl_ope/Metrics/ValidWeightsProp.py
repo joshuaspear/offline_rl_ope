@@ -1,6 +1,5 @@
 import torch
 from .MetricBase import MetricBase
-from ..OPEEstimators.utils import get_traj_weight_final
 from jaxtyping import jaxtyped
 from typeguard import typechecked as typechecker
 
