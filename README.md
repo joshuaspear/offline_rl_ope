@@ -12,7 +12,7 @@
 - [x] OPEEstimation
   - [x] IS.py
   - [x] utils.py
-  - [x] DirectMethod.py*
+  - [x] DirectMethod.py
   - [x] DoublyRobust.py
 - [x] Metrics
   - [x] EffectiveSampleSize.py
@@ -20,8 +20,6 @@
 - [x] PropensityModels
 - [ ] LowerBounds
 - [ ] api/d3rlpy
-
-Insufficient functionality to test DirectMethod.py i.e., currently only wrapper classes are implemented for the OPEEstimation/DirectMethod.py
 
 
 #### Overview
