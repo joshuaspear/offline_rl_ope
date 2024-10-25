@@ -50,7 +50,7 @@ class PropensityTorchMlpBase(PropensityTorchBase):
     def __init_weights(self, value):
         for layer in self.layers:
             if isinstance(layer, nn.Linear):
-                nn.init.kaiming_uniform_(layer.weight)
+                nn.init.xavier_uniform_(layer.weight)
                 layer.bias.data.fill_(value)            
     
     @abstractmethod
