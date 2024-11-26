@@ -9,12 +9,12 @@ from typeguard import typechecked as typechecker
 from .EmpiricalMeanDenom import EmpiricalMeanDenomBase
 from .WeightDenom import WeightDenomBase
 from ..types import WeightTensor
-from .IS import ISEstimator
+from .IS import ISEstimatorBase
 from .DirectMethod import DirectMethodBase
 from ..RuntimeChecks import check_array_shape
 
 
-class DREstimator(ISEstimator):
+class DREstimator(ISEstimatorBase):
     
     def __init__(
         self,
