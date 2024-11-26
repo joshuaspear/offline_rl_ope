@@ -9,12 +9,12 @@ from typeguard import typechecked as typechecker
 from .EmpiricalMeanDenom import EmpiricalMeanDenomBase
 from .WeightDenom import WeightDenomBase
 from ..types import WeightTensor
-from .IS import ISEstimator
+from .IS import ISEstimatorBase
 from .DirectMethod import DirectMethodBase
 from ..RuntimeChecks import check_array_shape
 
 
-class DREstimator(ISEstimator):
+class DREstimator(ISEstimatorBase):
     
     def __init__(
         self,
@@ -84,7 +84,6 @@ class DREstimator(ISEstimator):
         discnt_rewards = self.get_dataset_discnt_reward(
             rewards=rewards, discount=discount, h=h)
         # weights dim is (n_trajectories, max_length)
-        weights = self.process_weights(weights=weights, is_msk=is_msk)
         v:List[Float[torch.Tensor, "max_length 1"]] = []
         q:List[Float[torch.Tensor, "max_length 1"]] = []
         for s,a in zip(states, actions):
