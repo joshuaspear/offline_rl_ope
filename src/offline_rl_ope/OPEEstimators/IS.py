@@ -22,7 +22,6 @@ class ISEstimatorBase(OPEEstimatorBase):
         clip_weights:bool=False, 
         cache_traj_rewards:bool=False,
         clip:float=0.0,
-        norm_kwargs:Dict[str,Union[str,bool]] = {}
         ) -> None:
         super().__init__(
             empirical_denom=empirical_denom,
@@ -32,7 +31,6 @@ class ISEstimatorBase(OPEEstimatorBase):
         assert isinstance(clip_weights,bool)
         assert isinstance(cache_traj_rewards,bool)
         assert isinstance(clip,float)
-        assert isinstance(norm_kwargs,Dict)
         self.clip = clip
         if clip_weights:
             self.clip_weights = cw
