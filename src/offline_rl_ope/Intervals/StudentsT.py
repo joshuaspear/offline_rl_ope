@@ -40,16 +40,16 @@ class StudentsT(Interval):
                 """
                 )
         try:
-            assert is_estimator.traj_rewards_cache != torch.Tensor(0)
+            assert is_estimator.traj_rewards_cache.numel() != 0
         except AssertionError as e:
             e(
                 f"""
                 Rewards need to be cached! Set 'cache_traj_rewards' to True
                 """
             )
-        traj_rew = is_estimator.traj_rewards_cache.values()
+        traj_rew = is_estimator.traj_rewards_cache.numpy()
         emp_mean = np.mean(traj_rew)
-        emp_std = sem(a=traj_rew.values,ddof=1,axis=0)
+        emp_std = sem(a=traj_rew,ddof=1,axis=0)
         n = traj_rew.shape[0]
         dof = n - 1  # degrees of freedom
         confidence_interval = t.interval(
