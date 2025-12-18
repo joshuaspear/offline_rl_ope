@@ -10,6 +10,7 @@ from ..OPEEstimators.IS import ISEstimatorBase
 from ..OPEEstimators.EmpiricalMeanDenom import EmpiricalMeanDenom
 from ..OPEEstimators.WeightDenom import PassWeightDenom
 
+__all__ = ["BoostrapMean"]
 
 class BoostrapMean(Interval):
     

@@ -12,6 +12,8 @@ from ..OPEEstimators.WeightDenom import PassWeightDenom
 
 from .. import logger
 
+__all__ = ["StudentsT"]
+
 class StudentsT(Interval):
     
     def __init__(self):
