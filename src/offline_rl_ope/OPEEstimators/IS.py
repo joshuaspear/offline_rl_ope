@@ -23,10 +23,6 @@ class ISEstimatorBase(metaclass=ABCMeta):
         cache_traj_rewards:bool=False,
         clip:float=0.0,
         ) -> None:
-        super().__init__(
-            empirical_denom=empirical_denom,
-            cache_traj_rewards=cache_traj_rewards
-        )
         assert isinstance(weight_denom,WeightDenomBase)
         assert isinstance(clip_weights,bool)
         assert isinstance(cache_traj_rewards,bool)
@@ -160,6 +156,7 @@ class ISEstimatorBase(metaclass=ABCMeta):
             discount=discount, is_msk=is_msk
             )
         self.__cache_func(traj_rewards)
+        weights = self.clip_weights(weights=weights, clip=self.clip)
         denom = self.empirical_denom(
             weights=weights, 
             is_msk=is_msk

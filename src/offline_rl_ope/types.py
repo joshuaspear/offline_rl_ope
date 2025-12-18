@@ -62,8 +62,8 @@ class TorchPolicyReturn:
 
 @dataclass
 class NumpyPolicyReturn:
-    actions: Union[ActionTensor, None]
-    action_prs: Union[Float[torch.Tensor, "traj_length 1"], None]
+    actions: Union[ActionArray, None]
+    action_prs: Union[Float[np.ndarray, "traj_length 1"], None]
 
     def get_torch_policy_return(self) -> TorchPolicyReturn:
         return TorchPolicyReturn(

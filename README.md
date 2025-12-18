@@ -95,6 +95,10 @@ The different kinds of importance samples can also be visualised by querying the
 
 ### Release log
 
+#### 8.0.0 (Major API release)
+* Removed OPEEstimatorBase since it was tightly coupled with ISEstimatorBase
+* Added clipping to the denominator weights when defining weighted estimators
+
 #### 7.0.1
 * Made the logging location for d3rlpy/FQE callback an optional parameter
 * D3rlpy API now handles the use of observation and action scalers

@@ -17,7 +17,11 @@ class EffectiveSampleSize(MetricBase):
         self.__nan_if_all_0 = nan_if_all_0
     
     @jaxtyped(typechecker=typechecker)
-    def __ess(self, weights:WeightTensor) -> float:        
+    def __call__(
+        self, 
+        weights:WeightTensor,
+        weight_msk:WeightTensor
+        ) -> float:        
         # https://victorelvira.github.io/papers/kong92.pdf
         #assert isinstance(weights,torch.Tensor)
         #check_array_dim(weights,2)
@@ -25,12 +29,8 @@ class EffectiveSampleSize(MetricBase):
         if (all_0) and (self.__nan_if_all_0):
             res = np.nan
         else:
-            weights = weights.sum(dim=1)
+            weights = torch.mul(weights, weight_msk).sum(dim=1)
             numer = len(weights)
             w_var = torch.var(weights).item()
             res = (numer/(1+w_var))
         return res
-        
-    
-    def __call__(self, weights:WeightTensor) -> float:
-        return self.__ess(weights=weights)
