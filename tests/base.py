@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Any, List, Dict
+from typing import Any, List, Dict, Optional
 import numpy as np
 import torch
 import copy
@@ -53,6 +53,8 @@ class TestConfig:
     msk_test_res:torch.Tensor = None
     reward_test_res:torch.Tensor = None
     traj_lengths: List[int] = None
+    is_continuous:bool=False
+    action_dims:Optional[List[int]] = None
     
     @staticmethod
     def __get_traj_weights(
@@ -188,7 +190,8 @@ test_configs.update(
             test_eval_action_probs=test_eval_action_probs,
             test_reward_values=test_reward_values,
             test_dm_s_values=test_dm_s_values,
-            test_dm_sa_values=test_dm_sa_values
+            test_dm_sa_values=test_dm_sa_values,
+            action_dims=[2]
             )
         }
 )
@@ -214,7 +217,8 @@ test_configs.update(
             test_eval_action_probs=test_eval_action_probs,
             test_reward_values=test_reward_values,
             test_dm_s_values=test_dm_s_values,
-            test_dm_sa_values=test_dm_sa_values
+            test_dm_sa_values=test_dm_sa_values,
+            action_dims=[3]
             )
         }
 )
@@ -239,7 +243,34 @@ test_configs.update(
             test_eval_action_probs=test_eval_action_probs,
             test_reward_values=test_reward_values,
             test_dm_s_values=test_dm_s_values,
-            test_dm_sa_values=test_dm_sa_values
+            test_dm_sa_values=test_dm_sa_values,
+            action_dims=[2,2]
+            )
+        }
+)
+
+test_action_vals = [
+    [[1,1], [2,1], [3,1], [1,0]],
+    [[2,1], [0,2], [1,0]]
+]
+
+test_eval_action_vals = [
+    [[1,1], [1,1], [3,1], [1,0]],
+    [[0,0], [0,2], [0,1]]
+]
+
+test_configs.update(
+    {
+        "multi_categorical_action": TestConfig(
+            test_state_vals=test_state_vals,
+            test_action_vals=test_action_vals,
+            test_action_probs=test_action_probs,
+            test_eval_action_vals=test_eval_action_vals,
+            test_eval_action_probs=test_eval_action_probs,
+            test_reward_values=test_reward_values,
+            test_dm_s_values=test_dm_s_values,
+            test_dm_sa_values=test_dm_sa_values,
+            action_dims=[4,3]
             )
         }
 )
@@ -266,7 +297,8 @@ test_configs.update(
             test_eval_action_probs=test_eval_action_probs,
             test_reward_values=test_reward_values,
             test_dm_s_values=test_dm_s_values,
-            test_dm_sa_values=test_dm_sa_values
+            test_dm_sa_values=test_dm_sa_values,
+            is_continuous=True
             )
         }
 )
@@ -292,7 +324,8 @@ test_configs.update(
             test_eval_action_probs=test_eval_action_probs,
             test_reward_values=test_reward_values,
             test_dm_s_values=test_dm_s_values,
-            test_dm_sa_values=test_dm_sa_values
+            test_dm_sa_values=test_dm_sa_values,
+            is_continuous=True
             )
         }
 )

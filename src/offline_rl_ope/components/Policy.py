@@ -1,8 +1,9 @@
 from abc import ABCMeta, abstractmethod
 import torch
-from typing import Callable, List
+from typing import Callable, List, Optional
 from jaxtyping import jaxtyped, Float
 from typeguard import typechecked as typechecker
+import numpy as np
 
 from ..RuntimeChecks import check_array_dim
 from ..types import (
@@ -177,11 +178,17 @@ class GreedyDeterministic(BasePolicy):
         collect_res:bool=False, 
         collect_act:bool=False, 
         gpu:bool=False, 
-        eps:float=0
+        eps:float=0.0,
+        action_dims:Optional[List[int]]=None
         ) -> None:
         super().__init__(policy_func, collect_res=collect_res, 
                          collect_act=collect_act, gpu=gpu)
         self.__eps = eps
+        self.smooth_value = 0.0
+        if eps != 0.0:
+            assert action_dims is not None
+            self.smooth_value = eps/(np.prod([_a-1 for _a in action_dims]))
+        self.action_dims = action_dims
         
     @jaxtyped(typechecker=typechecker)
     def __call__(
@@ -197,11 +204,13 @@ class GreedyDeterministic(BasePolicy):
         greedy_action = p_return.actions
         check_array_dim(greedy_action,2)
         assert action.shape == greedy_action.shape
+        if self.action_dims is not None:
+            assert greedy_action.shape[1] == len(self.action_dims)
         greedy_action = self.postproc_tens(greedy_action)
         self.collect_act_func(greedy_action)
         res = (greedy_action == action).all(dim=1, keepdim=True).float()
         res_eps_upper = res*(1-self.__eps)
-        res_eps_lower = (1-res)*(self.__eps)
+        res_eps_lower = (1-res)*(self.smooth_value)
         res = res_eps_upper + res_eps_lower
         self.collect_res_fn(res)
         return res
