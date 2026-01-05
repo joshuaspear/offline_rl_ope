@@ -34,7 +34,9 @@ def dr(
             h = w.shape[0]
             weight_vals.append(w.prod(0,keepdim=True).repeat((h)))
         max_h = max(len(w) for w in weights)
-        test_res_w = get_wpd_denoms(weights=weights,h=max_h,is_type="is")
+        test_res_w = get_wpd_denoms(
+            weights=weights,h=max_h,is_type="is",agg_type="mean"
+            )
         weight_vals = [w/d[:len(w)] for w,d in zip(weight_vals,test_res_w)]
     elif is_type == "pd":
         for w in weights:
@@ -45,7 +47,7 @@ def dr(
         for w in weights:
             weight_vals.append(w.cumprod(0))
         max_h = max(len(w) for w in weights)
-        test_res_w = get_wpd_denoms(weights=weights,h=max_h)
+        test_res_w = get_wpd_denoms(weights=weights,h=max_h,agg_type="mean")
         weight_vals = [w/d[:len(w)] for w,d in zip(weight_vals,test_res_w)]
     else:
         raise ValueError

@@ -11,7 +11,7 @@ from ...OPEEstimators import (
     DREstimator,
     EmpiricalMeanDenom,
     PassWeightDenom,
-    PiTWeightDenom,
+    AvgPiTWeightDenom,
     )
 
 class VanillaDR(DREstimator):
@@ -51,7 +51,7 @@ class WDR(DREstimator):
         smooth_eps:float=0.0
         ) -> None:
         """_summary_
-        - https://arxiv.org/pdf/1906.03735 (\beta_{wdr} when weights are WIS)
+        - https://arxiv.org/pdf/1906.03735 (\beta_{wdr} when weights are PD)
         Args:
             dm_model (DirectMethodBase): _description_
             clip_weights (bool, optional): _description_. Defaults to False.
@@ -61,7 +61,7 @@ class WDR(DREstimator):
         """
         super().__init__(
             empirical_denom=EmpiricalMeanDenom(),
-            weight_denom=PiTWeightDenom(smooth_eps=smooth_eps),
+            weight_denom=AvgPiTWeightDenom(smooth_eps=smooth_eps),
             dm_model=dm_model, 
             clip_weights=clip_weights, 
             clip=clip, 

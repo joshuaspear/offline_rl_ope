@@ -8,7 +8,8 @@ from torch.nn.functional import pad
 def get_wpd_denoms(
     weights:List[torch.Tensor],
     h:int,
-    is_type:str = "pd"
+    is_type:str = "pd",
+    agg_type:str = "sum"
     ):
     if is_type == "pd":
         weight_pad = [pad(w, (0,h-w.shape[0])).cumprod(0) for w in weights]
@@ -19,9 +20,11 @@ def get_wpd_denoms(
     weight_denoms = []
     for ws in zip(*weight_pad):
         ws = [w[None] for w in ws]
-        weight_denoms.append(
-            torch.mean(torch.concat(ws))[None]
-        )
+        if agg_type == "mean":
+            _tmp = torch.mean(torch.concat(ws))[None]
+        elif agg_type == "sum":
+            _tmp = torch.sum(torch.concat(ws))[None]
+        weight_denoms.append(_tmp)
     weight_denoms = torch.concat(weight_denoms)
     test_res_w = torch.zeros(len(weights),h)
     for idx,w in enumerate(weight_pad):

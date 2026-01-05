@@ -19,7 +19,8 @@ class EffectiveSampleSizeTest(unittest.TestCase):
         act_res = (num/denum).item()
         metric = EffectiveSampleSize(nan_if_all_0=True)
         pred_res = metric(
-            weights=self.test_conf.weight_test_res
+            weights=self.test_conf.weight_test_res,
+            weight_msk=self.test_conf.msk_test_res
         )
         tol = act_res/1000
         np.testing.assert_allclose(pred_res, act_res, atol=tol)

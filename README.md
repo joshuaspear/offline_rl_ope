@@ -2,6 +2,7 @@
 
 > [!WARNING]
 > - All IS methods implemented incorrectly in versions < 6.x
+> - Weighted per-decision plug and play estimator is incorrectly implemented in < 9.x
 > - Unit testing currently only running in Python 3.11. 3.10 will be supported in the future
 > - Not all functionality has been tested i.e., d3rlpy api and LowerBounds are still in beta
 
@@ -93,7 +94,13 @@ If importance sampling based methods are evaluating to 0, consider visualising t
 
 The different kinds of importance samples can also be visualised by querying the ```traj_is_weights``` attribute of a given ```ImportanceSampler``` object. If for example, vanilla importance sampling is being used and the samples are not ```NaN``` or ```Inf``` then visualising the ```traj_is_weights``` may provide insight. In particular, IS weights will tend to inifinity when the evaluation policy places large density on an action in comparison to the behaviour policy.
 
+### Road map 
+
 ### Release log
+
+#### 9.0.0 (Major API release)
+* Fixed error with the per-decision weighted plug and play estimator
+* Streamlined the plug and play estimator using the newly implemented WeightDenom classes
 
 #### 8.1.0 (Major API release)
 * Added interval estimates!!!

@@ -8,7 +8,7 @@ from offline_rl_ope.OPEEstimators import (
     PassWeightDenom
     )
 from offline_rl_ope.api.StandardEstimators import (
-    VanillaISPDIS, WIS, CumulativeVanillaPDWIS, PDWIS
+    VanillaISPDIS, WeightedISPDIS
 )
 from torch.nn.functional import pad
 
@@ -248,109 +248,178 @@ class ISEstimatorTest(unittest.TestCase):
             atol=tol
             )
 
+    
+        
+    # @parameterized.expand(test_configs_fmt)
+    # def test_predict_wis(self, name, test_conf):
+    #     """
+    #     .. math::
+    #         w_{H}^{-1}\sum_{n=1}^{N} \sum_{t=1}^{H} r_{n,t}\gamma^{t-1} \prod_{t=1}^{H} \frac{\pi_{e}(a_{t},s_{t})}{\pi_{\beta}(a_{t},s_{t})}
+    #         w_{H} = \sum_{n=1}^{N}\prod_{t=1}^{H} \frac{\pi_{e}(a_{t},s_{t})}{\pi_{\beta}(a_{t},s_{t})}
+    #     """
+    #     traj_values = []
+    #     rewards = [torch.tensor(v).float() for v in test_conf.test_reward_values]
+    #     weights = [torch.tensor(v).float() for v in test_conf.test_act_indiv_weights]
+    #     states = [torch.tensor(v).float() for v in test_conf.test_state_vals]
+    #     actions = [torch.tensor(v).float() for v in test_conf.test_action_vals]
+    #     for w, r in zip(
+    #         weights,
+    #         rewards
+    #         ):
+    #         np_pows = torch.arange(0, w.shape[0])
+    #         np_discounts = torch.tensor([gamma]*w.shape[0])
+    #         discnt_vals = torch.pow(np_discounts, np_pows)
+    #         traj_values.append(
+    #             torch.sum(
+    #                 torch.multiply(
+    #                     torch.multiply(r.squeeze(), discnt_vals),torch.prod(w)
+    #                     ),
+    #                 0,
+    #                 keepdim=True
+    #                 )
+    #             )
+    #     denom = torch.concat(
+    #         [torch.prod(w,0,keepdim=True) for w in weights]
+    #         ).sum()
+    #     test_res = torch.concat(traj_values).sum()/denom
+    #     max_h = max([len(w) for w in weights])
+    #     is_msk = torch.concat([
+    #         torch.concat([torch.ones(x.shape[0]),torch.zeros(max_h-x.shape[0])])[None,:] 
+    #         for x in weights
+    #         ], axis=0)
+    #     weight_tens = torch.concat([
+    #         torch.concat([x, torch.ones(max_h-x.shape[0])])[None,:] for x in 
+    #         weights
+    #     ], axis=0)
+    #     weight_tens = weight_tens.prod(1,keepdim=True).repeat(
+    #         (1,is_msk.shape[1]))
+    #     is_estimator = WeightedISPDIS()
+    #     pred_res = is_estimator.predict(
+    #         rewards=rewards,
+    #         states=states,
+    #         actions=actions,
+    #         weights=weight_tens,
+    #         discount=gamma,
+    #         is_msk=is_msk
+    #         )
+    #     tol = np.abs(test_res.numpy().mean()/1000)
+    #     np.testing.assert_allclose(
+    #         pred_res.numpy(), 
+    #         test_res.numpy(), 
+    #         atol=tol
+    #         )   
+
+    # @parameterized.expand(test_configs_fmt)
+    # def test_predict_wpd_precup(self, name, test_conf):
+    #     """
+    #     - http://incompleteideas.net/papers/PSS-00.pdf (Q^{PDW} when weights are PDW)
+    #     .. math::
+    #         w_{H}^{-1}\sum_{n=0}^{N} \sum_{t=0}^{H-1} r_{n,t}\gamma^{t} \prod_{t'=0}^{t} \frac{\pi_{e}(a_{t'},s_{t'})}{\pi_{\beta}(a_{t'},s_{t'})} \\
+    #         w_{H} = \sum_{n=1}^{N}\sum_{t=0}^{H-1}\prod_{t=0}^{H-1} \frac{\pi_{e}(a_{t},s_{t})}{\pi_{\beta}(a_{t},s_{t})}
+    #     """
+    #     traj_values = []
+    #     rewards = [torch.tensor(v).float() for v in test_conf.test_reward_values]
+    #     weights = [torch.tensor(v).float() for v in test_conf.test_act_indiv_weights]
+    #     states = [torch.tensor(v).float() for v in test_conf.test_state_vals]
+    #     actions = [torch.tensor(v).float() for v in test_conf.test_action_vals]
+    #     for w, r in zip(
+    #         weights,
+    #         rewards
+    #         ):
+    #         np_pows = torch.arange(0, w.shape[0])
+    #         np_discounts = torch.tensor([gamma]*w.shape[0])
+    #         discnt_vals = torch.pow(np_discounts, np_pows)
+    #         traj_values.append(
+    #             torch.sum(
+    #                 torch.multiply(
+    #                     torch.multiply(r.squeeze(), discnt_vals),torch.cumprod(w,0)
+    #                     ),
+    #                 0,
+    #                 keepdim=True
+    #                 )
+    #             )
+    #     denom = torch.concat(
+    #         [torch.cumprod(w,0).sum(0,keepdim=True) for w in weights]
+    #         ).sum()
+    #     test_res = torch.concat(traj_values).sum()/denom
+    #     max_h = max([len(w) for w in weights])
+    #     is_msk = torch.concat([
+    #         torch.concat([torch.ones(x.shape[0]),torch.zeros(max_h-x.shape[0])])[None,:] 
+    #         for x in weights
+    #         ], axis=0)
+    #     weight_tens = torch.concat([
+    #         torch.concat([x, torch.ones(max_h-x.shape[0])])[None,:] for x in 
+    #         weights
+    #     ], axis=0)
+    #     weight_tens = weight_tens.cumprod(1)
+    #     is_estimator = CumulativeVanillaPDWIS()
+    #     pred_res = is_estimator.predict(
+    #         rewards=rewards,
+    #         states=states,
+    #         actions=actions,
+    #         weights=weight_tens,
+    #         discount=gamma,
+    #         is_msk=is_msk
+    #         )
+    #     tol = np.abs(test_res.numpy().mean()/1000)
+    #     np.testing.assert_allclose(
+    #         pred_res.numpy(), 
+    #         test_res.numpy(), 
+    #         atol=tol
+    #         )
+
     @parameterized.expand(test_configs_fmt)
-    def test_predict_wis(self, name, test_conf):
+    def test_predict_pit_wis(self, name, test_conf):
         """
+        - https://arxiv.org/pdf/1906.03735 (snsis when weights are IS)
         .. math::
-            w_{H}^{-1}\sum_{n=1}^{N} \sum_{t=1}^{H} r_{n,t}\gamma^{t-1} \prod_{t=1}^{H} \frac{\pi_{e}(a_{t},s_{t})}{\pi_{\beta}(a_{t},s_{t})}
-            w_{H} = \sum_{n=1}^{N}\prod_{t=1}^{H} \frac{\pi_{e}(a_{t},s_{t})}{\pi_{\beta}(a_{t},s_{t})}
+            w_{H,i}=\prod_{t=0}^{H}w_{t,i}
+            w_{H} = \frac{1}{n_{t}}\sum_{i=1}^{n_{t}} \mathbbm{1}w_{i,t}>0w_{H,i}
+            n^{-1}\sum_{i=1}^{n}\sum_{t=0}^{H}r_{t,i}\gamma^{t}w_{H,i}\frac{1}/{w_{H}}
         """
         traj_values = []
         rewards = [torch.tensor(v).float() for v in test_conf.test_reward_values]
         weights = [torch.tensor(v).float() for v in test_conf.test_act_indiv_weights]
         states = [torch.tensor(v).float() for v in test_conf.test_state_vals]
         actions = [torch.tensor(v).float() for v in test_conf.test_action_vals]
-        for w, r in zip(
+        h = max(w.shape[0] for w in weights)
+        # w_{H} = \frac{1}{n_{t}}\sum_{i=1}^{n_{t}} \mathbbm{1}w_{i,t}>0w_{H,i}
+        test_res_w = get_wpd_denoms(weights=weights,h=h,agg_type="mean",is_type="is")
+        for w, r, wn in zip(
             weights,
-            rewards
+            rewards,
+            test_res_w
             ):
             np_pows = torch.arange(0, w.shape[0])
             np_discounts = torch.tensor([gamma]*w.shape[0])
             discnt_vals = torch.pow(np_discounts, np_pows)
+            # w_{H,i}=\prod_{t=0}^{H}w_{t,i}
+            prod_indiv_weights = torch.prod(w,0).repeat(w.shape[0])
+            # w_{H,i}\frac{1}/{w_{H}}
+            normed_weights = prod_indiv_weights/wn[0:prod_indiv_weights.shape[0]]
+            # r_{t,i}\gamma^{t}w_{H,i}\frac{1}/{w_{H}}
             traj_values.append(
-                torch.sum(
                     torch.multiply(
-                        torch.multiply(r.squeeze(), discnt_vals),torch.prod(w)
-                        ),
-                    0,
-                    keepdim=True
+                        torch.multiply(r.squeeze(), discnt_vals), normed_weights
+                        )
                     )
-                )
-        denom = torch.concat(
-            [torch.prod(w,0,keepdim=True) for w in weights]
-            ).sum()
-        test_res = torch.concat(traj_values).sum()/denom
-        max_h = max([len(w) for w in weights])
+        traj_values = torch.concat(
+            [pad(r, (0,h-r.shape[0]))[None,:] for r in traj_values]
+            )
+        # n^{-1}\sum_{i=1}^{n}\sum_{t=0}^{H}r_{t,i}\gamma^{t}w_{H,i}\frac{1}/{w_{H}}
+        test_res = (traj_values).sum()/len(weights)
         is_msk = torch.concat([
-            torch.concat([torch.ones(x.shape[0]),torch.zeros(max_h-x.shape[0])])[None,:] 
+            torch.concat([torch.ones(x.shape[0]),torch.zeros(h-x.shape[0])])[None,:] 
             for x in weights
             ], axis=0)
         weight_tens = torch.concat([
-            torch.concat([x, torch.ones(max_h-x.shape[0])])[None,:] for x in 
+            torch.concat([x, torch.ones(h-x.shape[0])])[None,:] for x in 
             weights
         ], axis=0)
         weight_tens = weight_tens.prod(1,keepdim=True).repeat(
-            (1,is_msk.shape[1]))
-        is_estimator = WIS()
-        pred_res = is_estimator.predict(
-            rewards=rewards,
-            states=states,
-            actions=actions,
-            weights=weight_tens,
-            discount=gamma,
-            is_msk=is_msk
+            (1,is_msk.shape[1])
             )
-        tol = np.abs(test_res.numpy().mean()/1000)
-        np.testing.assert_allclose(
-            pred_res.numpy(), 
-            test_res.numpy(), 
-            atol=tol
-            )
-
-    @parameterized.expand(test_configs_fmt)
-    def test_predict_wpd_precup(self, name, test_conf):
-        """
-        - http://incompleteideas.net/papers/PSS-00.pdf (Q^{PDW} when weights are PDW)
-        .. math::
-            w_{H}^{-1}\sum_{n=0}^{N} \sum_{t=0}^{H-1} r_{n,t}\gamma^{t} \prod_{t'=0}^{t} \frac{\pi_{e}(a_{t'},s_{t'})}{\pi_{\beta}(a_{t'},s_{t'})} \\
-            w_{H} = \sum_{n=1}^{N}\sum_{t=0}^{H-1}\prod_{t=0}^{H-1} \frac{\pi_{e}(a_{t},s_{t})}{\pi_{\beta}(a_{t},s_{t})}
-        """
-        traj_values = []
-        rewards = [torch.tensor(v).float() for v in test_conf.test_reward_values]
-        weights = [torch.tensor(v).float() for v in test_conf.test_act_indiv_weights]
-        states = [torch.tensor(v).float() for v in test_conf.test_state_vals]
-        actions = [torch.tensor(v).float() for v in test_conf.test_action_vals]
-        for w, r in zip(
-            weights,
-            rewards
-            ):
-            np_pows = torch.arange(0, w.shape[0])
-            np_discounts = torch.tensor([gamma]*w.shape[0])
-            discnt_vals = torch.pow(np_discounts, np_pows)
-            traj_values.append(
-                torch.sum(
-                    torch.multiply(
-                        torch.multiply(r.squeeze(), discnt_vals),torch.cumprod(w,0)
-                        ),
-                    0,
-                    keepdim=True
-                    )
-                )
-        denom = torch.concat(
-            [torch.cumprod(w,0).sum(0,keepdim=True) for w in weights]
-            ).sum()
-        test_res = torch.concat(traj_values).sum()/denom
-        max_h = max([len(w) for w in weights])
-        is_msk = torch.concat([
-            torch.concat([torch.ones(x.shape[0]),torch.zeros(max_h-x.shape[0])])[None,:] 
-            for x in weights
-            ], axis=0)
-        weight_tens = torch.concat([
-            torch.concat([x, torch.ones(max_h-x.shape[0])])[None,:] for x in 
-            weights
-        ], axis=0)
-        weight_tens = weight_tens.cumprod(1)
-        is_estimator = CumulativeVanillaPDWIS()
+        is_estimator = WeightedISPDIS()
         pred_res = is_estimator.predict(
             rewards=rewards,
             states=states,
@@ -371,8 +440,9 @@ class ISEstimatorTest(unittest.TestCase):
         """
         - https://arxiv.org/pdf/1906.03735 (snsis when weights are PD)
         .. math::
-            w_{H}^{-1}\sum_{n=0}^{N} \sum_{t=0}^{H-1} r_{n,t}\gamma^{t} \prod_{t'=0}^{t} \frac{\pi_{e}(a_{t'},s_{t'})}{\pi_{\beta}(a_{t'},s_{t'})} \\
-            w_{H} = \sum_{n=1}^{N}\sum_{t=0}^{H-1}\prod_{t=0}^{H-1} \frac{\pi_{e}(a_{t},s_{t})}{\pi_{\beta}(a_{t},s_{t})}
+            w_{0:t',i}=\prod_{t=0}^{t'}w_{t,i}
+            w_{0:t'} = \sum_{i=1}^{n_{t'}} \mathbbm{1}[w_{i,t}>0]w_{0:t',i}
+            n^{-1}\sum_{i=1}^{n}\sum_{t=0}^{H}r_{t,i}\gamma^{t}w_{0:t,i}\frac{1}/{n_{t}^{-1}w_{0:t}}
         """
         traj_values = []
         rewards = [torch.tensor(v).float() for v in test_conf.test_reward_values]
@@ -380,24 +450,31 @@ class ISEstimatorTest(unittest.TestCase):
         states = [torch.tensor(v).float() for v in test_conf.test_state_vals]
         actions = [torch.tensor(v).float() for v in test_conf.test_action_vals]
         h = max(w.shape[0] for w in weights)
-        for w, r in zip(
+        # n_{t}^{-1}w_{0:t}
+        test_res_w = get_wpd_denoms(weights=weights,h=h,agg_type="mean")
+        for w, r, wn in zip(
             weights,
-            rewards
+            rewards,
+            test_res_w
             ):
             np_pows = torch.arange(0, w.shape[0])
             np_discounts = torch.tensor([gamma]*w.shape[0])
             discnt_vals = torch.pow(np_discounts, np_pows)
+            # \prod_{t=0}^{t'}w_{t,i}
+            cumprod_indiv_weights = torch.cumprod(w,0)
+            # w_{0:t,i}\frac{1}/{n_{t}^{-1}w_{0:t}}
+            normed_weights = cumprod_indiv_weights/wn[0:cumprod_indiv_weights.shape[0]]
+            # r_{t,i}\gamma^{t}w_{0:t,i}\frac{1}/{n_{t}^{-1}w_{0:t}}
             traj_values.append(
                     torch.multiply(
-                        torch.multiply(r.squeeze(), discnt_vals),torch.cumprod(w,0)
+                        torch.multiply(r.squeeze(), discnt_vals), normed_weights
                         )
                     )
-
-        test_res_w = get_wpd_denoms(weights=weights,h=h)
         traj_values = torch.concat(
             [pad(r, (0,h-r.shape[0]))[None,:] for r in traj_values]
             )
-        test_res = (traj_values/test_res_w).sum()/len(weights)
+        # n^{-1}\sum_{i=1}^{n}\sum_{t=0}^{H}r_{t,i}\gamma^{t}w_{0:t,i}\frac{1}/{n_{t}^{-1}w_{0:t}}
+        test_res = (traj_values).sum()/len(weights)
         is_msk = torch.concat([
             torch.concat([torch.ones(x.shape[0]),torch.zeros(h-x.shape[0])])[None,:] 
             for x in weights
@@ -407,7 +484,7 @@ class ISEstimatorTest(unittest.TestCase):
             weights
         ], axis=0)
         weight_tens = weight_tens.cumprod(1)
-        is_estimator = PDWIS()
+        is_estimator = WeightedISPDIS()
         pred_res = is_estimator.predict(
             rewards=rewards,
             states=states,
